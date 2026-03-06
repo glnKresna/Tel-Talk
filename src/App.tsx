@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 // TODO: Import the Login and ChatDashboard page components
 // TODO: Import useAuthStore (to check if someone is logged in)
@@ -9,6 +9,26 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 
 export default function App() {
   // TODO: Add a useEffect hook here that calls the checkAuthState() function from useAuthStore when the app first loads
+  useEffect(() => {
+    const testChatbot = async() => {
+      console.log("Hello... Test");
+
+      try {
+        const response = await fetch('api/gemini', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({prompt: "Hello Gemini! I am building a new chat app. Respond with a short, funny greeting."}),
+        });
+
+        const data = await response.json();
+        console.log("🤖 Gemini says:", data.reply);
+      } catch (err) {
+        console.error("Test error.")
+      }
+    };
+
+    testChatbot();
+  }, []);
 
   return (
     // TODO: Set up the <Routes> container
