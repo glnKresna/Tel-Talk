@@ -7,19 +7,18 @@ interface AuthState {
     isLoading: boolean;
     error: string | null;
 
-    checkAuthState: () => void;
+    cekAuthState: () => void;
     registerUser: (email: string, pass: string) => Promise<void>;
     loginUser: (email: string, pass: string) => Promise<void>;
     logoutUser: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState> ((set) => ({
-    // Define initial state
     currUser: null,
     isLoading: true,
     error: null,
 
-    checkAuthState: () => {
+    cekAuthState: () => {
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 set({currUser: user, isLoading: false, error: null});
@@ -65,8 +64,3 @@ export const useAuthStore = create<AuthState> ((set) => ({
         };
     }
 }));
-
-// TODO: Define initial state: currentUser (null) & isLoading (true)
-// TODO: Buat function yang nerima 'onAuthStateChanged' dari Firebase + update state
-// TODO: Buat function yang nge-handle login via Firebase Auth
-// TODO: Buat function yang nge-handle logout
