@@ -8,7 +8,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 // If they are logged in, return the child components.
 
 export default function App() {
-  // TODO: Add a useEffect hook here that calls the checkAuthState() function from useAuthStore when the app first loads
   useEffect(() => {
     const testChatbot = async() => {
       console.log("Hello... Test");
@@ -36,8 +35,7 @@ export default function App() {
     // TODO: Create a protected <Route> for the ChatDashboard (path="/"). Wrap its element in your ProtectedRoute component.
     
     <div className="text-center mt-20">
-      {/* Remove this placeholder div once the Routes are built! */}
-      <h1>Tel-Talk Router Placeholder</h1>
+      <h1>Router Placeholder</h1>
     </div>
   );
 }
