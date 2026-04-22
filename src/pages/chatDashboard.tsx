@@ -7,11 +7,22 @@
 // TODO: Petakan chat yang aktif & render komponen <MessageBubble /> di area utama sebelah kanan
 // TODO: Buat UI message box (textarea)
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useAuthStore } from '../store/useAuthStore'
 import { useMsgStore } from '../store/useMsgStore'
 import { useChatbotStore } from '../store/useChatbotStore'
-import MessageBubble from '../components/MessageBubble'
+import MessageBubble from '../components/messageBubble'
+
+interface Room {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+interface FilePreviewState {
+  file: File;
+  previewUrl: string | null;
+}
 
 // Daftar room chat yang tersedia
 const ROOMS = [
@@ -21,15 +32,15 @@ const ROOMS = [
 ]
 
 export default function ChatDashboard() {
-  const [activeTab, setActiveTab] = useState('chat') // 'chat' | 'ai'
-  const [activeRoom, setActiveRoom] = useState(ROOMS[0])
+  const [activeTab, setActiveTab] = useState<'chat' | 'ai'> ('chat') // 'chat' | 'ai'
+  const [activeRoom, setActiveRoom] = useState<Room>(ROOMS[0])
   const [inputText, setInputText] = useState('')
   const [aiInput, setAiInput] = useState('')
-  const [filePreview, setFilePreview] = useState(null) // { file, previewUrl }
+  const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null) // { file, previewUrl }
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
-  const bottomRef = useRef(null)
-  const fileInputRef = useRef(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { currUser, logoutUser } = useAuthStore()
   const { messages, listenMessages, stopListening, sendMessage, sendFileMessage, isLoading: msgLoading } = useMsgStore()
@@ -49,18 +60,19 @@ export default function ChatDashboard() {
   // Kirim pesan teks / file
   const handleSend = async () => {
     if (!currUser) return
+    const senderEmail = currUser.email ?? ''
 
     if (filePreview) {
-      await sendFileMessage(activeRoom.id, filePreview.file, currUser.uid, currUser.email, inputText)
+      await sendFileMessage(activeRoom.id, filePreview.file, currUser.uid, senderEmail, inputText)
       setFilePreview(null)
     } else if (inputText.trim()) {
-      await sendMessage(activeRoom.id, inputText.trim(), currUser.uid, currUser.email)
+      await sendMessage(activeRoom.id, inputText.trim(), currUser.uid, senderEmail)
     }
     setInputText('')
   }
 
   // Enter to send (Shift+Enter untuk newline)
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -68,7 +80,7 @@ export default function ChatDashboard() {
   }
 
   // Handle upload file
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
@@ -83,7 +95,7 @@ export default function ChatDashboard() {
     await sendAiMsg(msg)
   }
 
-  const handleAiKeyDown = (e) => {
+  const handleAiKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleAiSend()
@@ -306,9 +318,10 @@ export default function ChatDashboard() {
                   rows={1}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-600 resize-none outline-none max-h-32 leading-relaxed"
                   style={{ height: 'auto' }}
-                  onInput={(e) => {
-                    e.target.style.height = 'auto'
-                    e.target.style.height = e.target.scrollHeight + 'px'
+                  onInput={(e: FormEvent<HTMLTextAreaElement>) => {
+                    const target = e.currentTarget
+                    target.style.height = 'auto'
+                    target.style.height = `${target.scrollHeight}px`
                   }}
                 />
 
@@ -395,9 +408,10 @@ export default function ChatDashboard() {
                   placeholder="Tanya Gemini..."
                   rows={1}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-600 resize-none outline-none max-h-32 leading-relaxed"
-                  onInput={(e) => {
-                    e.target.style.height = 'auto'
-                    e.target.style.height = e.target.scrollHeight + 'px'
+                  onInput={(e: FormEvent<HTMLTextAreaElement>) => {
+                    const target = e.currentTarget
+                    target.style.height = 'auto'
+                    target.style.height = `${target.scrollHeight}px`
                   }}
                 />
                 <button

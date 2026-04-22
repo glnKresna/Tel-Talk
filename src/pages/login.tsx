@@ -17,7 +17,7 @@ export default function Login() {
   const { loginUser, registerUser, isLoading, error } = useAuthStore()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (isRegister) {
       await registerUser(email, password)
