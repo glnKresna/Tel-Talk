@@ -53,7 +53,7 @@ import ChatDashboard from './pages/chatDashboard'
 import { useAuthStore } from './store/useAuthStore'
 
 // Komponen wrapper buat route yang butuh login
-function ProtectedRoute({ children }: { children: ReactNode }) {
+export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { currUser, isLoading } = useAuthStore()
 
   if (isLoading) {
