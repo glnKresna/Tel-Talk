@@ -46,14 +46,14 @@
 // import ChatDashboard from './pages/chatDashboard'
 // import { useAuthStore } from './store/useAuthStore'
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/login'
 import ChatDashboard from './pages/chatDashboard'
 import { useAuthStore } from './store/useAuthStore'
 
 // Komponen wrapper buat route yang butuh login
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { currUser, isLoading } = useAuthStore()
 
   if (isLoading) {
@@ -88,9 +88,9 @@ export default function App() {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
+          // <ProtectedRoute>
             <ChatDashboard />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         }
       />
 

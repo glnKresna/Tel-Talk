@@ -405,7 +405,7 @@ export default function ChatDashboard() {
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
                   onKeyDown={handleAiKeyDown}
-                  placeholder="Tanya Gemini..."
+                  placeholder="Tanya Telbot..."
                   rows={1}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-600 resize-none outline-none max-h-32 leading-relaxed"
                   onInput={(e: FormEvent<HTMLTextAreaElement>) => {
