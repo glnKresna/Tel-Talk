@@ -1,7 +1,9 @@
-import type { ChangeEvent, FormEvent, KeyboardEvent, RefObject } from 'react'
-import type { Message } from '../../store/useMsgStore'
-import type { FilePreviewState, Room } from './types'
-import MessageBubble from '../../components/messageBubble'
+import { useState, useRef, useEffect } from 'react';
+import { useMsgStore, type Pesan } from '../../store/useMsgStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import MessageBubble from '../../components/messageBubble';
+import type { FilePreviewState, Room } from './types';
+import type { ChangeEvent, FormEvent, KeyboardEvent, RefObject } from 'react';
 
 type SidebarProps = {
   rooms: Room[]
@@ -49,7 +51,7 @@ export function ChatRoomsHeader({ activeRoom, messageCount }: HeaderProps) {
 
 type MainProps = {
   activeRoom: Room
-  messages: Message[]
+  messages: Pesan[]
   msgLoading: boolean
   currUserId?: string
   bottomRef: RefObject<HTMLDivElement | null>

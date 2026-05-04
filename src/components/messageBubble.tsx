@@ -1,9 +1,9 @@
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
-import type { Message } from '../store/useMsgStore'
+import type { Pesan } from '../store/useMsgStore'
 
 type Props = {
-  message: Message
+  message: Pesan
   isOwnMessage: boolean
 }
 

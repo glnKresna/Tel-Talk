@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { User, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { db } from '../config/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface AuthState {
     currUser: User | null;
@@ -34,6 +36,15 @@ export const useAuthStore = create<AuthState> ((set) => ({
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+            const user = userCredential.user;
+
+            await setDoc(doc(db, "users", user.uid), {
+                userID: user.uid,
+                email: user.email,
+                nama: email.split('@')[0],
+                status: true
+            });
+
             set({currUser: userCredential.user, isLoading: false});
         } catch (err: any) {
             set({error: err.message, currUser: null, isLoading: false});

@@ -1,5 +1,5 @@
 import type { ChangeEvent, KeyboardEvent, RefObject } from 'react'
-import type { Message } from '../../store/useMsgStore'
+import type { Pesan } from '../../store/useMsgStore'
 import type { ActiveTab, ChatbotMsg, FilePreviewState, Room } from './types'
 import { ChatRoomsHeader, ChatRoomsMain, ChatRoomsSidebar } from './chatRoomsUI'
 import { ChatbotHeader, ChatbotMain, ChatbotSidebar } from './chatbotUI'
@@ -19,7 +19,7 @@ type Props = {
   onLogout: () => void
 
   // Chat
-  messages: Message[]
+  messages: Pesan[]
   msgLoading: boolean
   currUserId?: string
   inputText: string

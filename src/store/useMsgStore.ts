@@ -10,38 +10,38 @@ import {
   QuerySnapshot,
   DocumentData,
 } from 'firebase/firestore'
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from 'firebase/storage'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../config/firebase'
 
-export interface Message {
-  id: string
-  text: string
-  senderId: string
-  senderEmail: string
-  createdAt: Timestamp | null
+export interface Pesan {
+  id?: string
+  isiPesan: string;
+  waktuKirim: any;
+  statusBaca: boolean;
+  senderId: string;
+  senderName: string;
   fileUrl?: string
   fileName?: string
   fileType?: string
 }
 
+interface MsgStore {
+  messages: Pesan[];
+  isLoading: boolean;
+  subscribeToRoom: (roomId: string) => () => void; 
+  kirimPesan: (roomId: string, text: string, user: any) => Promise<void>; 
+  kirimLampiran: (roomId: string, file: File, user: any, text?: string) => Promise<void>;
+}
+
 interface MsgState {
-  messages: Message[]
+  messages: Pesan[]
   isLoading: boolean
   error: string | null
+
   unsubscribe: (() => void) | null
-
-  // Subscribe ke real-time messages di room tertentu
-  listenMessages: (roomId: string) => void
-
-  // Berhenti listen (penting saat ganti room / unmount)
-  stopListening: () => void
-
-  // Kirim pesan teks biasa
-  sendMessage: (roomId: string, text: string, senderId: string, senderEmail: string) => Promise<void>
+  subscribeToRoom: (roomId: string) => () => void; 
+  
+  kirimPesan: (roomId: string, text: string, user: any) => Promise<void>;
 
   // Kirim pesan dengan lampiran file
   sendFileMessage: (
@@ -53,88 +53,77 @@ interface MsgState {
   ) => Promise<void>
 }
 
-export const useMsgStore = create<MsgState>((set, get) => ({
+export const useMsgStore = create<MsgStore>((set) => ({
   messages: [],
   isLoading: false,
-  error: null,
-  unsubscribe: null,
 
-  listenMessages: (roomId: string) => {
-    // Hentikan listener sebelumnya kalau ada
-    get().stopListening()
+  subscribeToRoom: (roomId) => {
+    set({ isLoading: true });
+    
+    const messagesRef = collection(db, "rooms", roomId, "messages");
+    const q = query(messagesRef, orderBy("waktuKirim", "asc"));
 
-    set({ isLoading: true, messages: [], error: null })
+    // Buat buka koneksi realtime ke Firestore
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const liveMessages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Pesan[];
 
-    const q = query(
-      collection(db, 'rooms', roomId, 'messages'),
-      orderBy('createdAt', 'asc')
-    )
+      // Update UI tiap ada perubahan di Firestore
+      set({ messages: liveMessages, isLoading: false });
+    });
 
-    const unsub = onSnapshot(
-      q,
-      (snapshot: QuerySnapshot<DocumentData>) => {
-        const msgs: Message[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Message, 'id'>),
-        }))
-        set({ messages: msgs, isLoading: false })
-      },
-      (err) => {
-        console.error('listenMessages error:', err)
-        set({ error: err.message, isLoading: false })
-      }
-    )
-
-    set({ unsubscribe: unsub })
+    // Matiin listener kalau user ganti/keluar room
+    return unsubscribe; 
   },
 
-  stopListening: () => {
-    const { unsubscribe } = get()
-    if (unsubscribe) {
-      unsubscribe()
-      set({ unsubscribe: null })
+  kirimPesan: async (roomId, text, user) => {
+    try {
+      const messagesRef = collection(db, "rooms", roomId, "messages");
+      
+      await addDoc(messagesRef, {
+        isiPesan: text,
+        senderId: user.uid,
+        senderName: user.email.split('@')[0],
+        waktuKirim: serverTimestamp(),
+        statusBaca: false
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
     }
   },
 
-  sendMessage: async (roomId, text, senderId, senderEmail) => {
-    if (!text.trim()) return
-
+  kirimLampiran: async (roomId, file, user, text = "") => {
     try {
-      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
-        text,
-        senderId,
-        senderEmail,
-        createdAt: serverTimestamp(),
-      })
-    } catch (err: any) {
-      console.error('sendMessage error:', err)
-      set({ error: err.message })
-    }
-  },
+      set({ isLoading: true });
 
-  sendFileMessage: async (roomId, file, senderId, senderEmail, caption = '') => {
-    set({ isLoading: true })
+      // 1. Create a specific folder path in Storage: chat-rooms/roomID/timestamp_filename
+      const fileRef = ref(storage, `chat-rooms/${roomId}/${Date.now()}_${file.name}`);
 
-    try {
-      // Upload file ke Firebase Storage
-      const fileRef = ref(storage, `rooms/${roomId}/${Date.now()}_${file.name}`)
-      await uploadBytes(fileRef, file)
-      const fileUrl = await getDownloadURL(fileRef)
+      // 2. Upload the raw file to that path
+      await uploadBytes(fileRef, file);
 
-      await addDoc(collection(db, 'rooms', roomId, 'messages'), {
-        text: caption,
-        senderId,
-        senderEmail,
-        createdAt: serverTimestamp(),
-        fileUrl,
+      // 3. Get the public, clickable URL from Firebase Storage
+      const downloadUrl = await getDownloadURL(fileRef);
+
+      // 4. Save the message to Firestore with the attached URL
+      const messagesRef = collection(db, "rooms", roomId, "messages");
+      await addDoc(messagesRef, {
+        isiPesan: text, // Optional caption
+        senderId: user.uid,
+        senderName: user.email.split('@')[0],
+        waktuKirim: serverTimestamp(),
+        statusBaca: false,
+        fileUrl: downloadUrl,
         fileName: file.name,
-        fileType: file.type,
-      })
+        fileType: file.type
+      });
 
-      set({ isLoading: false })
-    } catch (err: any) {
-      console.error('sendFileMessage error:', err)
-      set({ error: err.message, isLoading: false })
+      set({ isLoading: false });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      set({ isLoading: false });
     }
-  },
-}))
+  }
+}));

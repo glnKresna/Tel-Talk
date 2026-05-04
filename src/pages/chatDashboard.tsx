@@ -12,55 +12,82 @@ const ROOMS: Room[] = [
 ]
 
 export default function ChatDashboard() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('chat')
-  const [activeRoom, setActiveRoom] = useState<Room>(ROOMS[0])
-  const [inputText, setInputText] = useState('')
-  const [aiInput, setAiInput] = useState('')
-  const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
+  const [activeRoom, setActiveRoom] = useState<Room>(ROOMS[0]);
+  const [inputText, setInputText] = useState('');
+  const [aiInput, setAiInput] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { currUser, logoutUser } = useAuthStore();
+  const { kirimPesan, kirimLampiran, sendFileMessage, subscribeToRoom, messages, isLoading: msgLoading } = useMsgStore();
+  const { pesan: aiMessages, sendMsg: sendAiMsg, isLoading: aiLoading } = useChatbotStore();
 
-  const { currUser, logoutUser } = useAuthStore()
-  const { messages, listenMessages, stopListening, sendMessage, sendFileMessage, isLoading: msgLoading } = useMsgStore()
-  const { pesan: aiMessages, sendMsg: sendAiMsg, isLoading: aiLoading } = useChatbotStore()
+  const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    listenMessages(activeRoom.id)
-    return () => stopListening()
-  }, [activeRoom.id, listenMessages, stopListening])
+    if (activeRoom) {
+      const unsubscribe = subscribeToRoom(activeRoom.id);
+
+      return() => unsubscribe();
+    }
+  }, [activeRoom.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, aiMessages])
+  }, [messages, aiMessages]);
 
-  const handleSend = async () => {
-    if (!currUser) return
-    const senderEmail = currUser.email ?? ''
+  
 
+  const handleSendText = async () => {
+    if (inputText.trim() === '' && !filePreview) return;
+  
     if (filePreview) {
-      await sendFileMessage(activeRoom.id, filePreview.file, currUser.uid, senderEmail, inputText)
-      setFilePreview(null)
-    } else if (inputText.trim()) {
-      await sendMessage(activeRoom.id, inputText.trim(), currUser.uid, senderEmail)
+      await kirimLampiran(activeRoom.id, filePreview.file, currUser, inputText.trim());
+      
+      if (filePreview.previewUrl) {
+        URL.revokeObjectURL(filePreview.previewUrl);
+      }
+      
+      setFilePreview(null);                        
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';           
+      }
+    } else {
+      await kirimPesan(activeRoom.id, inputText.trim(), currUser);
     }
-    setInputText('')
-  }
+
+    setInputText('');
+}
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSend()
+      handleSendText()
     }
   }
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-    setFilePreview({ file, previewUrl })
+    const file = e.target.files?.[0];
+
+    if (file) {
+      setFilePreview({
+        file,
+        previewUrl: URL.createObjectURL(file)
+      });
+    }
   }
+
+  const handleClearFilePreview = () => {
+    if (filePreview?.previewUrl) {
+      URL.revokeObjectURL(filePreview.previewUrl); // Prevent memory leaks!
+    }
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Reset the hidden HTML input
+    }
+  };
 
   const handleAiSend = async () => {
     if (!aiInput.trim() || aiLoading) return
@@ -93,7 +120,7 @@ export default function ChatDashboard() {
       inputText={inputText}
       onInputTextChange={setInputText}
       onKeyDown={handleKeyDown}
-      onSend={handleSend}
+      onSend={handleSendText}
       filePreview={filePreview}
       fileInputRef={fileInputRef}
       onFileChange={handleFileChange}
