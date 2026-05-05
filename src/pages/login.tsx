@@ -25,6 +25,11 @@ export default function Login() {
   useEffect(() => {
     if (firebaseError) {
       const lowerError = firebaseError.toLowerCase();
+
+    if (lowerError.includes('email-already-in-use')) {
+        setErrors({ email: 'Email ini sudah terdaftar!' });
+    }
+
       if (lowerError.includes('password') || lowerError.includes('kredensial')) {
         setErrors({ password: 'Password salah. Coba lagi.' });
       } else if (lowerError.includes('email') || lowerError.includes('user not found')) {

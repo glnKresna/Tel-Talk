@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { User, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -11,8 +11,10 @@ interface AuthState {
 
     cekAuthState: () => void;
     registerUser: (email: string, pass: string) => Promise<void>;
+    resendVerifikasi: () => Promise<void>;
     loginUser: (email: string, pass: string) => Promise<void>;
     logoutUser: () => Promise<void>;
+    reloadUser: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState> ((set) => ({
@@ -38,6 +40,12 @@ export const useAuthStore = create<AuthState> ((set) => ({
             const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
             const user = userCredential.user;
 
+            const actionCodeSettings = {
+                url: window.location.origin, 
+                handleCodeInApp: false,
+            };
+            await sendEmailVerification(user, actionCodeSettings);
+
             await setDoc(doc(db, "users", user.uid), {
                 userID: user.uid,
                 email: user.email,
@@ -49,6 +57,35 @@ export const useAuthStore = create<AuthState> ((set) => ({
         } catch (err: any) {
             set({error: err.message, currUser: null, isLoading: false});
         };
+    },
+
+    // Resend email verifikasi
+    resendVerifikasi: async () => {
+        const user = auth.currentUser;
+        if (user) {
+            try {
+                    const actionCodeSettings = {
+                        url: window.location.origin, 
+                        handleCodeInApp: false,
+                    };
+
+                await sendEmailVerification(user, actionCodeSettings);
+                alert("Email verifikasi baru telah dikirim! cek inbox/spam kamu.");
+            } catch (err: any) {
+                // Rate limiter
+                alert("Tunggu sebentar sebelum mengirim ulang email."); 
+            }
+        }
+    },
+
+    reloadUser: async () => {
+        const user = auth.currentUser;
+        if (user) {
+            await user.reload(); // Paksa Firebase buat refresh data user
+            if (user.emailVerified) {
+                set({ currUser: { ...user } as any });
+            }
+        }
     },
 
     // Login (via Firebase Auth)
