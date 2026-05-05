@@ -48,9 +48,10 @@
 
 import { useEffect, type ReactNode } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuthStore } from './store/useAuthStore'
+import Landing from './pages/landing';
 import Login from './pages/login'
 import ChatDashboard from './pages/chatDashboard'
-import { useAuthStore } from './store/useAuthStore'
 
 // Komponen wrapper buat route yang butuh login
 export function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -65,7 +66,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!currUser) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/landing" replace />
   }
 
   return <>{children}</>
@@ -82,15 +83,16 @@ export default function App() {
   return (
     <Routes>
       {/* Public route */}
+      <Route path="/landing" element={<Landing />} />
       <Route path="/login" element={<Login />} />
 
       {/* Protected route — harus login dulu */}
       <Route
         path="/"
         element={
-          // <ProtectedRoute>
+          <ProtectedRoute>
             <ChatDashboard />
-          // </ProtectedRoute>
+          </ProtectedRoute>
         }
       />
 

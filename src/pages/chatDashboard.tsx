@@ -20,7 +20,7 @@ export default function ChatDashboard() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { currUser, logoutUser } = useAuthStore();
-  const { kirimPesan, kirimLampiran, sendFileMessage, subscribeToRoom, messages, isLoading: msgLoading } = useMsgStore();
+  const { kirimPesan, kirimLampiran, subscribeToRoom, messages, isLoading: msgLoading } = useMsgStore();
   const { pesan: aiMessages, sendMsg: sendAiMsg, isLoading: aiLoading } = useChatbotStore();
 
   const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null);
