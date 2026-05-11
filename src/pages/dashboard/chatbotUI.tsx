@@ -1,5 +1,7 @@
-import type { FormEvent, KeyboardEvent, RefObject } from 'react'
-import type { ChatbotMsg } from './types'
+import { useState, type KeyboardEvent, type RefObject } from 'react';
+import { IconButton } from '../../components/UI/IconButton';
+import { AutoResizeTextarea } from '../../components/UI/AutoResizeTextarea';
+import { useChatbotStore } from '../../store/useChatbotStore';
 
 type SidebarProps = {
   isSidebarOpen: boolean
@@ -33,24 +35,27 @@ export function ChatbotHeader() {
 }
 
 type MainProps = {
-  aiMessages: ChatbotMsg[]
-  aiLoading: boolean
-  aiInput: string
   bottomRef: RefObject<HTMLDivElement | null>
-  onAiInputChange: (text: string) => void
-  onAiKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void
-  onAiSend: () => void
 }
 
-export function ChatbotMain({
-  aiMessages,
-  aiLoading,
-  aiInput,
-  bottomRef,
-  onAiInputChange,
-  onAiKeyDown,
-  onAiSend,
-}: MainProps) {
+export function ChatbotMain({ bottomRef }: MainProps) {
+  const [aiInput, setAiInput] = useState('');
+  const { pesan: aiMessages, isLoading: aiLoading, sendMsg: sendAiMsg } = useChatbotStore();
+
+  const handleAiSend = async () => {
+    if (!aiInput.trim() || aiLoading) return;
+    const msg = aiInput.trim();
+    setAiInput(''); // Kosongkan input setelah dikirim
+    await sendAiMsg(msg);
+  }
+
+  const handleAiKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAiSend();
+    }
+  }
+
   return (
     <>
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -105,34 +110,29 @@ export function ChatbotMain({
         <div ref={bottomRef} />
       </div>
 
+      {/* Bagian Input yang sudah diubah logic-nya */}
       <div className="px-6 pb-5 pt-2">
         <div className="flex items-end gap-2 bg-[#1e1e2a] border border-white/[0.08] rounded-2xl px-4 py-3 focus-within:border-emerald-500/40 transition-colors">
-          <textarea
+          
+          <AutoResizeTextarea
             value={aiInput}
-            onChange={(e) => onAiInputChange(e.target.value)}
-            onKeyDown={onAiKeyDown}
+            onChange={(e) => setAiInput(e.target.value)} 
+            onKeyDown={handleAiKeyDown} 
             placeholder="Tanya Telbot..."
-            rows={1}
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-600 resize-none outline-none max-h-32 leading-relaxed"
-            onInput={(e: FormEvent<HTMLTextAreaElement>) => {
-              const target = e.currentTarget
-              target.style.height = 'auto'
-              target.style.height = `${target.scrollHeight}px`
-            }}
           />
-          <button
-            onClick={onAiSend}
+
+          <IconButton
+            variant="ai"
+            onClick={handleAiSend} 
             disabled={!aiInput.trim() || aiLoading}
-            className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed
-              flex items-center justify-center transition-all flex-shrink-0 mb-0.5"
-          >
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+            icon={
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            }
+          />
         </div>
       </div>
     </>
   )
 }
-

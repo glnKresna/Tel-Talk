@@ -1,6 +1,5 @@
-import type { ChangeEvent, KeyboardEvent, RefObject } from 'react'
-import type { Pesan } from '../../store/useMsgStore'
-import type { ActiveTab, ChatbotMsg, FilePreviewState, Room } from './types'
+import type { RefObject } from 'react'
+import type { ActiveTab, Room } from './types'
 import { ChatRoomsHeader, ChatRoomsMain, ChatRoomsSidebar } from './chatRoomsUI'
 import { ChatbotHeader, ChatbotMain, ChatbotSidebar } from './chatbotUI'
 
@@ -17,28 +16,9 @@ type Props = {
 
   currUserEmail?: string | null
   onLogout: () => void
-
-  // Chat
-  messages: Pesan[]
-  msgLoading: boolean
-  currUserId?: string
-  inputText: string
-  onInputTextChange: (text: string) => void
-  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void
-  onSend: () => void
-  filePreview: FilePreviewState | null
-  fileInputRef: RefObject<HTMLInputElement | null>
-  onFileChange: (e: ChangeEvent<HTMLInputElement>) => void
-  onClearFilePreview: () => void
+  
+  // bottomRef tetap di sini untuk memicu auto-scroll dari Parent
   bottomRef: RefObject<HTMLDivElement | null>
-
-  // AI
-  aiMessages: ChatbotMsg[]
-  aiLoading: boolean
-  aiInput: string
-  onAiInputChange: (text: string) => void
-  onAiKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void
-  onAiSend: () => void
 }
 
 export default function ChatDashboardUI({
@@ -51,24 +31,7 @@ export default function ChatDashboardUI({
   onToggleSidebar,
   currUserEmail,
   onLogout,
-  messages,
-  msgLoading,
-  currUserId,
-  inputText,
-  onInputTextChange,
-  onKeyDown,
-  onSend,
-  filePreview,
-  fileInputRef,
-  onFileChange,
-  onClearFilePreview,
   bottomRef,
-  aiMessages,
-  aiLoading,
-  aiInput,
-  onAiInputChange,
-  onAiKeyDown,
-  onAiSend,
 }: Props) {
   return (
     <div className="flex h-screen bg-[#0f0f14] text-white overflow-hidden">
@@ -77,7 +40,7 @@ export default function ChatDashboardUI({
         className={`flex flex-col bg-[#13131a] border-r border-white/[0.06] transition-all duration-300
           ${isSidebarOpen ? 'w-64' : 'w-16'}`}
       >
-        {/* Brand */}
+        {/* Brand Section */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-white/[0.06]">
           <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
             <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -99,7 +62,7 @@ export default function ChatDashboardUI({
           </button>
         </div>
 
-        {/* Tab switcher */}
+        {/* Tab Switcher */}
         <div className="flex gap-1 p-3 border-b border-white/[0.06]">
           <button
             onClick={() => onTabChange('chat')}
@@ -121,7 +84,7 @@ export default function ChatDashboardUI({
           </button>
         </div>
 
-        {/* Sidebar content */}
+        {/* Dynamic Sidebar Content */}
         {activeTab === 'chat' ? (
           <ChatRoomsSidebar
             rooms={rooms}
@@ -133,7 +96,7 @@ export default function ChatDashboardUI({
           <ChatbotSidebar isSidebarOpen={isSidebarOpen} />
         )}
 
-        {/* User info + logout */}
+        {/* User Profile & Logout Section */}
         <div className="border-t border-white/[0.06] p-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
@@ -162,43 +125,26 @@ export default function ChatDashboardUI({
         </div>
       </aside>
 
-      {/* MAIN AREA */}
+      {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.06] bg-[#13131a]/50 backdrop-blur-sm">
           {activeTab === 'chat' ? (
-            <ChatRoomsHeader activeRoom={activeRoom} messageCount={messages.length} />
+            <ChatRoomsHeader activeRoom={activeRoom} messageCount={0} />
           ) : (
             <ChatbotHeader />
           )}
         </header>
 
-        {/* Content */}
+        {/* Main Content Sections */}
         {activeTab === 'chat' ? (
           <ChatRoomsMain
             activeRoom={activeRoom}
-            messages={messages}
-            msgLoading={msgLoading}
-            currUserId={currUserId}
             bottomRef={bottomRef}
-            filePreview={filePreview}
-            fileInputRef={fileInputRef}
-            onFileChange={onFileChange}
-            onClearFilePreview={onClearFilePreview}
-            inputText={inputText}
-            onInputTextChange={onInputTextChange}
-            onKeyDown={onKeyDown}
-            onSend={onSend}
           />
         ) : (
           <ChatbotMain
-            aiMessages={aiMessages}
-            aiLoading={aiLoading}
-            aiInput={aiInput}
             bottomRef={bottomRef}
-            onAiInputChange={onAiInputChange}
-            onAiKeyDown={onAiKeyDown}
-            onAiSend={onAiSend}
           />
         )}
       </main>

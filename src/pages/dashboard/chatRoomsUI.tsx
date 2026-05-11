@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
-import { useMsgStore, type Pesan } from '../../store/useMsgStore';
+import { useState, useRef, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react';
+import { useMsgStore } from '../../store/useMsgStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import MessageBubble from '../../components/messageBubble';
+import { IconButton } from '../../components/UI/IconButton';
+import { AutoResizeTextarea } from '../../components/UI/AutoResizeTextarea';
 import type { FilePreviewState, Room } from './types';
-import type { ChangeEvent, FormEvent, KeyboardEvent, RefObject } from 'react';
 
+// ================= SIDEBAR =================
 type SidebarProps = {
   rooms: Room[]
   activeRoomId: string
@@ -32,6 +34,7 @@ export function ChatRoomsSidebar({ rooms, activeRoomId, isSidebarOpen, onSelectR
   )
 }
 
+// ================= HEADER =================
 type HeaderProps = {
   activeRoom: Room
   messageCount: number
@@ -49,39 +52,58 @@ export function ChatRoomsHeader({ activeRoom, messageCount }: HeaderProps) {
   )
 }
 
+// ================= MAIN (CHAT AREA) =================
 type MainProps = {
   activeRoom: Room
-  messages: Pesan[]
-  msgLoading: boolean
-  currUserId?: string
   bottomRef: RefObject<HTMLDivElement | null>
-
-  filePreview: FilePreviewState | null
-  fileInputRef: RefObject<HTMLInputElement | null>
-  onFileChange: (e: ChangeEvent<HTMLInputElement>) => void
-  onClearFilePreview: () => void
-
-  inputText: string
-  onInputTextChange: (text: string) => void
-  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void
-  onSend: () => void
 }
 
-export function ChatRoomsMain({
-  activeRoom,
-  messages,
-  msgLoading,
-  currUserId,
-  bottomRef,
-  filePreview,
-  fileInputRef,
-  onFileChange,
-  onClearFilePreview,
-  inputText,
-  onInputTextChange,
-  onKeyDown,
-  onSend,
-}: MainProps) {
+export function ChatRoomsMain({ activeRoom, bottomRef }: MainProps) {
+  // Global store
+  const { messages, isLoading: msgLoading, kirimPesan, kirimLampiran } = useMsgStore();
+  const { currUser } = useAuthStore();
+
+  const [inputText, setInputText] = useState('');
+  const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handler buat input file
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFilePreview({ file, previewUrl: URL.createObjectURL(file) });
+    }
+  }
+
+  const handleClearFilePreview = () => {
+    if (filePreview?.previewUrl) {
+      URL.revokeObjectURL(filePreview.previewUrl);
+    }
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; 
+    }
+  };
+
+  const handleSendText = async () => {
+    if (inputText.trim() === '' && !filePreview) return;
+  
+    if (filePreview) {
+      await kirimLampiran(activeRoom.id, filePreview.file, currUser, inputText.trim());
+      handleClearFilePreview();
+    } else {
+      await kirimPesan(activeRoom.id, inputText.trim(), currUser);
+    }
+    setInputText('');
+  }
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendText();
+    }
+  }
+
   return (
     <>
       {/* Messages area */}
@@ -104,7 +126,7 @@ export function ChatRoomsMain({
           <MessageBubble
             key={msg.id}
             message={msg}
-            isOwnMessage={msg.senderId === currUserId}
+            isOwnMessage={msg.senderId === currUser?.uid}
           />
         ))}
         <div ref={bottomRef} />
@@ -117,10 +139,7 @@ export function ChatRoomsMain({
             <img src={filePreview.previewUrl} alt="preview" className="w-12 h-12 rounded-lg object-cover" />
           ) : (
             <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center">
-              <svg className="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <span className="text-zinc-400">📄</span>
             </div>
           )}
           <div className="flex-1 min-w-0">
@@ -128,12 +147,10 @@ export function ChatRoomsMain({
             <p className="text-[10px] text-zinc-500">{(filePreview.file.size / 1024).toFixed(1)} KB</p>
           </div>
           <button
-            onClick={onClearFilePreview}
+            onClick={handleClearFilePreview}
             className="text-zinc-500 hover:text-red-400 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            ✕
           </button>
         </div>
       )}
@@ -141,45 +158,37 @@ export function ChatRoomsMain({
       {/* Input bar */}
       <div className="px-6 pb-5 pt-2">
         <div className="flex items-end gap-2 bg-[#1e1e2a] border border-white/[0.08] rounded-2xl px-4 py-3 focus-within:border-violet-500/40 transition-colors">
-          {/* Attach file */}
-          <button
+          
+          <IconButton
+            variant="ghost"
             onClick={() => fileInputRef.current?.click()}
-            className="text-zinc-500 hover:text-violet-400 transition-colors mb-0.5 flex-shrink-0"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-            </svg>
-          </button>
-          <input ref={fileInputRef} type="file" className="hidden" onChange={onFileChange} />
+            icon={
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+            }
+          />
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
 
-          {/* Textarea */}
-          <textarea
+          <AutoResizeTextarea
             value={inputText}
-            onChange={(e) => onInputTextChange(e.target.value)}
-            onKeyDown={onKeyDown}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder={filePreview ? 'Tambah caption (opsional)...' : 'Ketik pesan...'}
-            rows={1}
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-600 resize-none outline-none max-h-32 leading-relaxed"
-            style={{ height: 'auto' }}
-            onInput={(e: FormEvent<HTMLTextAreaElement>) => {
-              const target = e.currentTarget
-              target.style.height = 'auto'
-              target.style.height = `${target.scrollHeight}px`
-            }}
           />
 
-          {/* Send button */}
-          <button
-            onClick={onSend}
+          <IconButton
+            variant="primary"
+            onClick={handleSendText}
             disabled={!inputText.trim() && !filePreview}
-            className="w-8 h-8 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed
-              flex items-center justify-center transition-all flex-shrink-0 mb-0.5"
-          >
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+            icon={
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            }
+          />
+          
         </div>
         <p className="text-[10px] text-zinc-600 mt-1.5 text-center">
           Enter to send · Shift+Enter for newline
