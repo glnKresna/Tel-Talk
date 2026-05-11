@@ -108,7 +108,7 @@ export const useAuthStore = create<AuthState> ((set) => ({
             await signOut(auth);
             set({currUser: null, isLoading: false});
         } catch (err: any) {
-            set({error: err.message, currUser: null, isLoading: false});
+            set({error: err.code, currUser: null, isLoading: false});
         };
     }
 }));
