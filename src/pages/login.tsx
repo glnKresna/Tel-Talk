@@ -3,8 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function Login() {
-  const [searchParams] = useSearchParams();
-  const [isRegister, setIsRegister] = useState(searchParams.get('state') === 'register');
+  const [isRegister, setIsRegister] = useState(false);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,12 +23,10 @@ export default function Login() {
   useEffect(() => {
     if (firebaseError) {
       const lowerError = firebaseError.toLowerCase();
-
-    if (lowerError.includes('email-already-in-use')) {
+      
+      if (lowerError.includes('email-already-in-use')) {
         setErrors({ email: 'Email ini sudah terdaftar!' });
-    }
-
-      if (lowerError.includes('password') || lowerError.includes('kredensial')) {
+      } else if (lowerError.includes('password') || lowerError.includes('invalid-credential')) {
         setErrors({ password: 'Password salah. Coba lagi.' });
       } else if (lowerError.includes('email') || lowerError.includes('user not found')) {
         setErrors({ email: 'Email tidak terdaftar atau salah.' });
