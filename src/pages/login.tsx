@@ -10,7 +10,6 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // --- UPGRADED: Error State Object ---
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
@@ -44,7 +43,6 @@ export default function Login() {
     const newErrors: typeof errors = {};
     let isValid = true;
 
-    // 1. Email Validation (Empty & Format)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim()) {
       newErrors.email = 'Email tidak boleh kosong';
@@ -54,12 +52,10 @@ export default function Login() {
       isValid = false;
     }
 
-    // 2. Password Validation
     if (!password) {
       newErrors.password = 'Password tidak boleh kosong';
       isValid = false;
     } else if (isRegister) {
-      // Signup Specific Password Rules
       const hasUpperCase = /[A-Z]/.test(password);
       const hasNumber = /\d/.test(password);
 
@@ -71,7 +67,6 @@ export default function Login() {
         isValid = false;
       }
 
-      // 3. Confirm Password Validation
       if (!confirmPassword) {
         newErrors.confirmPassword = 'Konfirmasi password tidak boleh kosong';
         isValid = false;
@@ -88,7 +83,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Stop the submission if validation fails!
     if (!validateForm()) return;
 
     if (isRegister) {
