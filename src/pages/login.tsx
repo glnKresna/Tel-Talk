@@ -20,6 +20,19 @@ export default function Login() {
 
   const { loginUser, registerUser, isLoading, error: firebaseError } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const stateParam = searchParams.get('state');
+
+  // Sync mode dari query param (mis. /login?state=register dari landing page)
+  useEffect(() => {
+    if (stateParam === 'register') {
+      setIsRegister(true);
+      setErrors({});
+      setPassword('');
+      setConfirmPassword('');
+      setShowVerifyButton(false);
+    }
+  }, [stateParam]);
 
   // Watch for Firebase errors and map them to the correct input box
   useEffect(() => {

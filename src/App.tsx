@@ -48,7 +48,8 @@ export default function App() {
 
   // Pantau status auth dari Firebase saat app pertama kali mount
   useEffect(() => {
-    cekAuthState()
+    const unsubscribe = cekAuthState()
+    return unsubscribe
   }, [cekAuthState])
 
   return (

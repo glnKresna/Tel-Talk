@@ -8,9 +8,9 @@ type Props = {
 }
 
 export default function MessageBubble({ message, isOwnMessage }: Props) {
-  const { text, senderEmail, createdAt, fileUrl, fileName, fileType } = message
+  const { isiPesan, senderName, waktuKirim, fileUrl, fileName, fileType } = message
 
-  const formattedTime = createdAt ? format(createdAt.toDate(), 'HH:mm', { locale: id }) : ''
+  const formattedTime = waktuKirim?.toDate ? format(waktuKirim.toDate(), 'HH:mm', { locale: id }) : ''
 
   const isImage = fileType?.startsWith('image/')
   const isVideo = fileType?.startsWith('video/')
@@ -21,14 +21,14 @@ export default function MessageBubble({ message, isOwnMessage }: Props) {
       {!isOwnMessage && (
         <div className="w-7 h-7 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mb-1">
           <span className="text-[10px] font-bold text-violet-300">
-            {senderEmail?.[0]?.toUpperCase() ?? '?'}
+            {senderName?.[0]?.toUpperCase() ?? '?'}
           </span>
         </div>
       )}
 
       <div className={`flex flex-col gap-1 max-w-[72%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         {!isOwnMessage && (
-          <span className="text-[10px] text-zinc-500 px-1">{senderEmail}</span>
+          <span className="text-[10px] text-zinc-500 px-1">{senderName}</span>
         )}
 
         <div
@@ -83,7 +83,7 @@ export default function MessageBubble({ message, isOwnMessage }: Props) {
             </div>
           )}
 
-          {text && <p className="break-words">{text}</p>}
+          {isiPesan && <p className="break-words">{isiPesan}</p>}
 
           <span
             className={`block text-right text-[10px] mt-1 select-none

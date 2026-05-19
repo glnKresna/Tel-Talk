@@ -7,19 +7,17 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
-  QuerySnapshot,
-  DocumentData,
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../config/firebase'
 
 export interface Pesan {
   id?: string
-  isiPesan: string;
-  waktuKirim: any;
-  statusBaca: boolean;
-  senderId: string;
-  senderName: string;
+  isiPesan: string
+  waktuKirim?: Timestamp | null
+  statusBaca: boolean
+  senderId: string
+  senderName: string
   fileUrl?: string
   fileName?: string
   fileType?: string
