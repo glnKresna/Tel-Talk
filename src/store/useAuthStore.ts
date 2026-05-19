@@ -3,6 +3,7 @@ import { User, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEma
 import { auth } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface AuthState {
     currUser: User | null;
@@ -10,7 +11,8 @@ interface AuthState {
     error: string | null;
 
     cekAuthState: () => void;
-    registerUser: (email: string, pass: string) => Promise<void>;
+    cekEmailTerdaftar: (email: string) => Promise<any>;
+    registerUser: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
     resendVerifikasi: () => Promise<void>;
     loginUser: (email: string, pass: string) => Promise<void>;
     logoutUser: () => Promise<void>;
@@ -23,13 +25,34 @@ export const useAuthStore = create<AuthState> ((set) => ({
     error: null,
 
     cekAuthState: () => {
+        set({ isLoading: true });
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 set({currUser: user, isLoading: false, error: null});
             } else {
-                set({currUser: null, isLoading: false});
+                set({currUser: null, isLoading: false, error: null});
             }
         });
+    },
+
+    cekEmailTerdaftar: async(email) => {
+        const q = query(
+            collection(db, "users"), where("email", "==", email)
+        );
+        
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+            const data = snapshot.docs[0].data();
+            
+            return {
+                exists: true, verified: data.emailVerified
+            };
+        }
+        
+        return {
+            exists: false, verified: false
+        };
     },
 
     // Register akun (via Firebase Auth)
@@ -40,22 +63,26 @@ export const useAuthStore = create<AuthState> ((set) => ({
             const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
             const user = userCredential.user;
 
-            const actionCodeSettings = {
-                url: window.location.origin, 
-                handleCodeInApp: false,
-            };
-            await sendEmailVerification(user, actionCodeSettings);
+            // const actionCodeSettings = {
+            //     url: window.location.origin, 
+            //     handleCodeInApp: false,
+            // };
+            await sendEmailVerification(user);
 
             await setDoc(doc(db, "users", user.uid), {
                 userID: user.uid,
                 email: user.email,
                 nama: email.split('@')[0],
-                status: true
+                status: true,
+                emailVerified: false
             });
 
-            set({currUser: userCredential.user, isLoading: false});
+            set({currUser: userCredential.user, isLoading: false, error: null});
+            return { success: true };
         } catch (err: any) {
-            set({error: err.message, currUser: null, isLoading: false});
+            console.error("GAGAL REGISTER:", err);
+            set({error: err.code || err.message, currUser: null, isLoading: false});
+            return { success: false, error: err.code || err.message};
         };
     },
 
@@ -64,12 +91,12 @@ export const useAuthStore = create<AuthState> ((set) => ({
         const user = auth.currentUser;
         if (user) {
             try {
-                    const actionCodeSettings = {
-                        url: window.location.origin, 
-                        handleCodeInApp: false,
-                    };
+                    // const actionCodeSettings = {
+                    //     url: window.location.origin, 
+                    //     handleCodeInApp: false,
+                    // };
 
-                await sendEmailVerification(user, actionCodeSettings);
+                await sendEmailVerification(user);
                 alert("Email verifikasi baru telah dikirim! cek inbox/spam kamu.");
             } catch (err: any) {
                 // Rate limiter
@@ -83,6 +110,8 @@ export const useAuthStore = create<AuthState> ((set) => ({
         if (user) {
             await user.reload(); // Paksa Firebase buat refresh data user
             if (user.emailVerified) {
+                await setDoc(
+                    doc(db, "users", user.uid),{emailVerified: true},{ merge: true });
                 set({ currUser: { ...user } as any });
             }
         }
@@ -96,7 +125,7 @@ export const useAuthStore = create<AuthState> ((set) => ({
             const userCredential = await signInWithEmailAndPassword(auth, email, pass);
             set({currUser: userCredential.user, isLoading: false});
         } catch (err: any) {
-            set({error: err.message, currUser: null, isLoading: false});
+            set({error: err.code, currUser: null, isLoading: false});
         };
     },
 

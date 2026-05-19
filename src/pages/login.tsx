@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { sendEmailVerification } from 'firebase/auth';
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
@@ -9,6 +10,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
+  const [showVerifyButton, setShowVerifyButton] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
@@ -81,15 +83,53 @@ export default function Login() {
     e.preventDefault();
     
     if (!validateForm()) return;
-
+    
     if (isRegister) {
-      await registerUser(email, password);
-    } else {
-      await loginUser(email, password);
+      setShowVerifyButton(false);
+      const result = await registerUser(email, password);
+  
+      if (result && result.success) {
+        navigate('/verify-email');
+        return;
+      }
+
+      const currentError = result?.error || '';
+      
+      if (currentError.toLowerCase().includes('email-already-in-use')) {
+        try {
+          await loginUser(email, password);
+          const { currUser } = useAuthStore.getState();
+          
+          if (currUser && !currUser.emailVerified) {
+            setErrors({email: 'Email sudah terdaftar, tetapi belum diverifikasi.'});
+            setShowVerifyButton(true);
+            return;
+          }
+          
+          setErrors({email: 'Email sudah terdaftar.'});
+        } catch {
+          setErrors({email: 'Email sudah terdaftar.'});
+        }
+        return;
+      } else {
+        setErrors({ general: `Registrasi Gagal: ${currentError}. Coba buka inspect elemen/Console.` });
+      }
+      return;
     }
 
-    const { currUser } = useAuthStore.getState();
-    if (currUser) navigate('/');
+    if (!isRegister) {
+      await loginUser(email, password);
+      const { currUser, error: loginError } = useAuthStore.getState();
+      
+      if (!loginError && currUser) {
+        if (currUser.emailVerified) {
+          navigate('/');
+        } else {
+          setErrors({ email: 'Email Anda belum diverifikasi.' });
+          setShowVerifyButton(true);
+        }
+      }
+    }
   };
 
   return (
@@ -123,8 +163,16 @@ export default function Login() {
               {errors.email && (
                 <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.email}</p>
               )}
+              {showVerifyButton && (
+                <button
+                type="button"
+                onClick={() => navigate('/verify-email')}
+                className="text-violet-400 text-xs mt-2 ml-1 hover:text-violet-300 transition-colors"
+                >
+                  Verifikasi Sekarang
+                  </button>
+                )}
             </div>
-
             {/* PASSWORD INPUT */}
             <div>
               <input

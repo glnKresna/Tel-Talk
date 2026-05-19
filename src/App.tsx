@@ -4,10 +4,11 @@ import { useAuthStore } from './store/useAuthStore'
 import Landing from './pages/landing';
 import Login from './pages/login'
 import ChatDashboard from './pages/chatDashboard'
+import VerifyEmail from './pages/verifyEmail';
 
 // Komponen wrapper buat route yang butuh login
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { currUser, isLoading, logoutUser, resendVerifikasi, reloadUser } = useAuthStore()
+  const { currUser, isLoading, reloadUser } = useAuthStore()
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -36,37 +37,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!currUser.emailVerified) {
-    return (
-      <div className="min-h-screen bg-[#0f0f14] flex flex-col items-center justify-center p-4 text-center">
-        <div className="w-16 h-16 bg-violet-500/20 rounded-full flex items-center justify-center mb-6 border border-violet-500/30">
-          <svg className="w-8 h-8 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-white mb-2">Cek Email Kamu!</h2>
-        <p className="text-zinc-400 max-w-md mb-8">
-          Kami telah mengirimkan link verifikasi ke <span className="text-white font-medium">{currUser.email}</span>. 
-          Silakan klik link tersebut untuk mengaktifkan akunmu.
-        </p>
-        
-        <div className="flex flex-col gap-4 w-full max-w-xs">
-          {/* NEW: Resend Button */}
-          <button 
-            onClick={() => resendVerifikasi()}
-            className="w-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white text-sm font-medium py-3 rounded-xl transition-all"
-          >
-            Kirim Ulang Email
-          </button>
-          
-          <button 
-            onClick={() => logoutUser()}
-            className="text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
-          >
-            Kembali ke halaman Login
-          </button>
-        </div>
-      </div>
-    )
+    return <Navigate to="/login" replace />
   }
 
   return <>{children}</>
@@ -85,7 +56,7 @@ export default function App() {
       {/* Public route */}
       <Route path="/landing" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-
+      <Route path="/verify-email" element={<VerifyEmail />} />
       {/* Protected route — harus login dulu */}
       <Route
         path="/"
