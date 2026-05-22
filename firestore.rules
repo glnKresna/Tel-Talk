@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Users: hanya boleh akses dokumen miliknya sendiri.
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      // Batasi field yang boleh diubah: nama (display name), bio, photoURL.
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['nama', 'bio', 'photoURL'])
+        && request.resource.data.userID == resource.data.userID;
+
+      allow create: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // Rooms/messages: masih permissive untuk fitur chat saat ini (sesuaikan nanti).
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
+      }
+    }
+  }
+}
+
