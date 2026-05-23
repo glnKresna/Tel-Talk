@@ -1,0 +1,70 @@
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { db } from '../config/firebase'
+
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
+export type DiscoverabilityInput = {
+  uid: string
+  email: string | null | undefined
+  nama: string
+  photoURL?: string | null
+  bio?: string
+}
+
+/** Sinkronkan profil publik + lookup email (discoverability). */
+export async function syncDiscoverabilityProfile(input: DiscoverabilityInput): Promise<void> {
+  const { uid, email, nama, photoURL = null, bio = '' } = input
+  const trimmedName = nama.trim() || 'User'
+
+  await setDoc(
+    doc(db, 'publicProfiles', uid),
+    {
+      uid,
+      nama: trimmedName,
+      photoURL,
+      bio: bio.trim(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  )
+
+  if (email) {
+    await setDoc(
+      doc(db, 'userLookup', normalizeEmail(email)),
+      { uid, nama: trimmedName },
+      { merge: true },
+    )
+  }
+}
+
+/** Backfill untuk user lama yang belum punya publicProfiles / userLookup. */
+export async function ensureDiscoverabilityProfile(
+  uid: string,
+  email: string | null | undefined,
+  fallbackName: string,
+): Promise<void> {
+  const publicSnap = await getDoc(doc(db, 'publicProfiles', uid))
+  if (publicSnap.exists() && email) {
+    const lookupSnap = await getDoc(doc(db, 'userLookup', normalizeEmail(email)))
+    if (lookupSnap.exists()) return
+  }
+
+  const userSnap = await getDoc(doc(db, 'users', uid))
+  const data = userSnap.exists() ? userSnap.data() : null
+
+  const nama =
+    (typeof data?.nama === 'string' && data.nama.trim()) || fallbackName
+  const photoURL =
+    (typeof data?.photoURL === 'string' && data.photoURL) || null
+  const bio = (typeof data?.bio === 'string' && data.bio) || ''
+
+  await syncDiscoverabilityProfile({
+    uid,
+    email: email ?? (typeof data?.email === 'string' ? data.email : null),
+    nama,
+    photoURL,
+    bio,
+  })
+}

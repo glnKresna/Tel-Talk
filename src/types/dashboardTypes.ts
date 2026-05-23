@@ -1,4 +1,4 @@
-export type ActiveTab = 'chat' | 'ai'
+export type ActiveTab = 'chat' | 'contacts' | 'ai'
 
 export interface Room {
   id: string

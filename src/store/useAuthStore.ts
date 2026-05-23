@@ -4,6 +4,7 @@ import { auth } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { syncDiscoverabilityProfile } from '../lib/syncPublicProfile';
 
 interface AuthState {
     currUser: User | null;
@@ -70,12 +71,21 @@ export const useAuthStore = create<AuthState> ((set) => ({
             // };
             await sendEmailVerification(user);
 
+            const nama = email.split('@')[0];
             await setDoc(doc(db, "users", user.uid), {
                 userID: user.uid,
                 email: user.email,
-                nama: email.split('@')[0],
+                nama,
                 status: true,
                 emailVerified: false
+            });
+
+            await syncDiscoverabilityProfile({
+                uid: user.uid,
+                email: user.email,
+                nama,
+                photoURL: null,
+                bio: '',
             });
 
             set({currUser: userCredential.user, isLoading: false, error: null});

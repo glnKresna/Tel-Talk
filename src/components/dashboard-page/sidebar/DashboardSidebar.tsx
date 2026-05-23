@@ -1,7 +1,9 @@
 import type { ActiveTab, Room } from '../../../types/dashboardTypes'
 import { RoomList } from '../chat/RoomList'
 import { ChatbotSidebar } from '../ai/ChatbotSidebar'
+import { ContactSidebarList } from '../contacts/ContactSidebarList'
 import { ProfileSidebarTrigger } from './ProfileSidebarTrigger'
+import type { ContactWithProfile } from '../../../types/contactTypes'
 
 type Props = {
   activeTab: ActiveTab
@@ -15,6 +17,13 @@ type Props = {
   profilePhotoURL: string | null
   isProfileOpen: boolean
   onOpenProfile: () => void
+  contacts: ContactWithProfile[]
+  contactsLoading: boolean
+  selectedContactId: string | null
+  onSelectContact: (contactUid: string) => void
+  onRenameContact: (contact: ContactWithProfile) => void
+  onContactPeer: (contact: ContactWithProfile) => void
+  onRemoveContact: (contact: ContactWithProfile) => void
 }
 
 export function DashboardSidebar({
@@ -29,6 +38,13 @@ export function DashboardSidebar({
   profilePhotoURL,
   isProfileOpen,
   onOpenProfile,
+  contacts,
+  contactsLoading,
+  selectedContactId,
+  onSelectContact,
+  onRenameContact,
+  onContactPeer,
+  onRemoveContact,
 }: Props) {
   return (
     <aside
@@ -71,26 +87,49 @@ export function DashboardSidebar({
         </button>
         <button
           type="button"
+          onClick={() => onTabChange('contacts')}
+          className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all
+            ${activeTab === 'contacts'
+              ? 'bg-violet-600/20 text-violet-300'
+              : 'text-zinc-500 hover:text-zinc-300'}`}
+        >
+          {isSidebarOpen ? 'Kontak' : '👥'}
+        </button>
+        <button
+          type="button"
           onClick={() => onTabChange('ai')}
           className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all
             ${activeTab === 'ai'
               ? 'bg-violet-600/20 text-violet-300'
               : 'text-zinc-500 hover:text-zinc-300'}`}
         >
-          {isSidebarOpen ? 'AI Bot' : '🤖'}
+          {isSidebarOpen ? 'AI' : '🤖'}
         </button>
       </div>
 
-      {activeTab === 'chat' ? (
+      {activeTab === 'chat' && (
         <RoomList
           rooms={rooms}
           activeRoomId={activeRoomId}
           isSidebarOpen={isSidebarOpen}
           onSelectRoom={onSelectRoom}
         />
-      ) : (
-        <ChatbotSidebar isSidebarOpen={isSidebarOpen} />
       )}
+
+      {activeTab === 'contacts' && (
+        <ContactSidebarList
+          contacts={contacts}
+          isLoading={contactsLoading}
+          isSidebarOpen={isSidebarOpen}
+          selectedContactId={selectedContactId}
+          onSelectContact={onSelectContact}
+          onRename={onRenameContact}
+          onContact={onContactPeer}
+          onRemove={onRemoveContact}
+        />
+      )}
+
+      {activeTab === 'ai' && <ChatbotSidebar isSidebarOpen={isSidebarOpen} />}
 
       <ProfileSidebarTrigger
         isSidebarOpen={isSidebarOpen}

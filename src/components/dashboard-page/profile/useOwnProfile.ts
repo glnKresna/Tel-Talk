@@ -3,6 +3,7 @@ import { updateProfile, type User } from 'firebase/auth'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { db } from '../../../config/firebase'
 import { uploadFileToCloudinary } from '../../../lib/cloudinaryUpload'
+import { syncDiscoverabilityProfile } from '../../../lib/syncPublicProfile'
 
 type Options = {
   currUser: User | null
@@ -143,6 +144,13 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
         throw e
       }
       setSavedDisplayName(nextName)
+      await syncDiscoverabilityProfile({
+        uid: currUser.uid,
+        email: currUserEmail ?? currUser.email,
+        nama: nextName,
+        photoURL,
+        bio,
+      })
       triggerToast('Nama berhasil disimpan.')
     } catch {
       setProfileError('Gagal menyimpan nama. Coba lagi.')
@@ -159,6 +167,13 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
       const nextBio = bio.trim()
       await updateDoc(doc(db, 'users', currUser.uid), { bio: nextBio })
       setSavedBio(nextBio)
+      await syncDiscoverabilityProfile({
+        uid: currUser.uid,
+        email: currUserEmail ?? currUser.email,
+        nama: savedDisplayName,
+        photoURL,
+        bio: nextBio,
+      })
       triggerToast('Bio berhasil disimpan.')
     } catch {
       setProfileError('Gagal menyimpan bio. Coba lagi.')
@@ -201,6 +216,13 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
         throw e
       }
       setPhotoURL(url)
+      await syncDiscoverabilityProfile({
+        uid: currUser.uid,
+        email: currUserEmail ?? currUser.email,
+        nama: savedDisplayName,
+        photoURL: url,
+        bio: savedBio,
+      })
       triggerToast('Foto profil berhasil diubah.')
     } catch {
       setProfileError('Gagal upload foto profil. Coba lagi.')
