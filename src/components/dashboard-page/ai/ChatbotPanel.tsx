@@ -1,58 +1,27 @@
-import { useState, type KeyboardEvent, type RefObject } from 'react';
-import { IconButton } from '../../components/UI/IconButton';
-import { AutoResizeTextarea } from '../../components/UI/AutoResizeTextarea';
-import { useChatbotStore } from '../../store/useChatbotStore';
+import { useState, type KeyboardEvent, type RefObject } from 'react'
+import { IconButton } from '../../UI/IconButton'
+import { AutoResizeTextarea } from '../../UI/AutoResizeTextarea'
+import { useChatbotStore } from '../../../store/useChatbotStore'
 
-type SidebarProps = {
-  isSidebarOpen: boolean
-}
-
-export function ChatbotSidebar({ isSidebarOpen }: SidebarProps) {
-  if (!isSidebarOpen) return null
-
-  return (
-    <div className="flex-1 p-4">
-      <div className="bg-violet-600/10 border border-violet-500/20 rounded-xl p-3">
-        <p className="text-xs text-violet-300 font-medium mb-1">Tel-Bot</p>
-        <p className="text-xs text-zinc-500">Tanya apa saja, AI siap bantu kamu.</p>
-      </div>
-    </div>
-  )
-}
-
-export function ChatbotHeader() {
-  return (
-    <>
-      <div className="w-8 h-8 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-        <span className="text-sm">🤖</span>
-      </div>
-      <div>
-        <h2 className="font-semibold text-white text-sm">Tel-Bot AI</h2>
-        <p className="text-[11px] text-zinc-500">Powered by Gemini</p>
-      </div>
-    </>
-  )
-}
-
-type MainProps = {
+type Props = {
   bottomRef: RefObject<HTMLDivElement | null>
 }
 
-export function ChatbotMain({ bottomRef }: MainProps) {
-  const [aiInput, setAiInput] = useState('');
-  const { pesan: aiMessages, isLoading: aiLoading, sendMsg: sendAiMsg } = useChatbotStore();
+export function ChatbotPanel({ bottomRef }: Props) {
+  const [aiInput, setAiInput] = useState('')
+  const { pesan: aiMessages, isLoading: aiLoading, sendMsg: sendAiMsg } = useChatbotStore()
 
   const handleAiSend = async () => {
-    if (!aiInput.trim() || aiLoading) return;
-    const msg = aiInput.trim();
-    setAiInput(''); // Kosongkan input setelah dikirim
-    await sendAiMsg(msg);
+    if (!aiInput.trim() || aiLoading) return
+    const msg = aiInput.trim()
+    setAiInput('')
+    await sendAiMsg(msg)
   }
 
   const handleAiKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleAiSend();
+      e.preventDefault()
+      void handleAiSend()
     }
   }
 
@@ -110,20 +79,17 @@ export function ChatbotMain({ bottomRef }: MainProps) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Bagian Input yang sudah diubah logic-nya */}
       <div className="px-6 pb-5 pt-2">
         <div className="flex items-end gap-2 bg-[#1e1e2a] border border-white/[0.08] rounded-2xl px-4 py-3 focus-within:border-emerald-500/40 transition-colors">
-          
           <AutoResizeTextarea
             value={aiInput}
-            onChange={(e) => setAiInput(e.target.value)} 
-            onKeyDown={handleAiKeyDown} 
+            onChange={(e) => setAiInput(e.target.value)}
+            onKeyDown={handleAiKeyDown}
             placeholder="Tanya Telbot..."
           />
-
           <IconButton
             variant="ai"
-            onClick={handleAiSend} 
+            onClick={() => void handleAiSend()}
             disabled={!aiInput.trim() || aiLoading}
             icon={
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">

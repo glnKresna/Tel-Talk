@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/useAuthStore'
 import Landing from './pages/landing';
 import Login from './pages/login'
-import ChatDashboard from './pages/chatDashboard'
+import Dashboard from './pages/dashboard'
 import VerifyEmail from './pages/verifyEmail';
 
 // Komponen wrapper buat route yang butuh login
@@ -37,7 +37,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!currUser.emailVerified) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/verify-email" replace />
   }
 
   return <>{children}</>
@@ -63,7 +63,7 @@ export default function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <ChatDashboard />
+            <Dashboard />
           </ProtectedRoute>
         }
       />
