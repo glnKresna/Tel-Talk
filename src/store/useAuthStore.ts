@@ -71,11 +71,11 @@ export const useAuthStore = create<AuthState> ((set) => ({
             // };
             await sendEmailVerification(user);
 
-            const nama = email.split('@')[0];
+            const username = email.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '') || 'user';
             await setDoc(doc(db, "users", user.uid), {
                 userID: user.uid,
                 email: user.email,
-                nama,
+                username,
                 status: true,
                 emailVerified: false
             });
@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState> ((set) => ({
             await syncDiscoverabilityProfile({
                 uid: user.uid,
                 email: user.email,
-                nama,
+                username,
                 photoURL: null,
                 bio: '',
             });

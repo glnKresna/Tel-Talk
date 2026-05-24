@@ -4,7 +4,7 @@ export type ContactAddedVia = 'email' | 'name'
 
 export interface PublicProfile {
   uid: string
-  nama: string
+  username: string
   photoURL: string | null
   bio: string
   updatedAt?: Timestamp
@@ -24,5 +24,7 @@ export interface ContactWithProfile extends Contact {
 export function getContactDisplayName(contact: ContactWithProfile): string {
   const custom = contact.customName?.trim()
   if (custom) return custom
-  return contact.profile?.nama?.trim() || 'User'
+  const username = contact.profile?.username?.trim()
+  if (username) return `@${username}`
+  return 'User'
 }

@@ -1,4 +1,6 @@
-export type ActiveTab = 'chat' | 'contacts' | 'ai'
+import type { ContactWithProfile } from './contactTypes'
+
+export type ActiveTab = 'dms' | 'rooms' | 'pinned' | 'ai'
 
 export interface Room {
   id: string
@@ -16,3 +18,24 @@ export type ChatbotMsg = {
   content: string
 }
 
+export interface ModalState {
+  isOpen: boolean
+  type: 'add_contact' | 'create_room' | null
+}
+
+export interface DashboardSubPanelProps {
+  activeTab: ActiveTab
+  searchVal: string
+  setSearchVal: (val: string) => void
+  
+  // Props daftar kontak
+  contactLoading: boolean
+  contacts: ContactWithProfile[]
+  activeContactId: string | null
+  onSelectContact: (uid: string) => void
+  
+  // Props daftar room
+  rooms: Room[]
+  activeRoomId: string
+  onSelectRoom: (room: Room) => void
+}

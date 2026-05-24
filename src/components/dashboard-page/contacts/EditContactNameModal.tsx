@@ -22,7 +22,7 @@ export function EditContactNameModal({ open, contact, onClose, onSave }: Props) 
 
   if (!contact) return null
 
-  const legalName = contact.profile?.nama ?? 'User'
+  const legalName = contact.profile?.username ? `@${contact.profile.username}` : 'User'
 
   const handleSave = async () => {
     setIsSaving(true)

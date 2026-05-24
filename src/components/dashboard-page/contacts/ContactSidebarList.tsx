@@ -29,14 +29,14 @@ export function ContactSidebarList({
           <button
             key={c.contactUid}
             type="button"
-            title={c.customName || c.profile?.nama}
+            title={c.customName || c.profile?.username}
             onClick={() => onSelectContact(c.contactUid)}
             className={`w-10 h-10 rounded-full text-[10px] font-bold flex items-center justify-center
               ${selectedContactId === c.contactUid
                 ? 'bg-violet-600/30 text-violet-200 ring-2 ring-violet-500/40'
                 : 'bg-violet-600/15 text-violet-300'}`}
           >
-            {(c.customName || c.profile?.nama || '?')[0]?.toUpperCase()}
+            {(c.customName || c.profile?.username || '?')[0]?.toUpperCase()}
           </button>
         ))}
       </nav>

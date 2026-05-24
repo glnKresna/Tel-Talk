@@ -14,12 +14,12 @@ export function UserProfileModal({ open, onClose, profile }: Props) {
       <div className="flex items-center gap-3">
         <AvatarCircle
           photoURL={profile.photoURL}
-          displayName={profile.nama}
+          displayName={`@${profile.username}`}
           size="md"
           variant="dashboard"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white truncate">{profile.nama}</p>
+          <p className="text-sm font-semibold text-white truncate">{`@${profile.username}`}</p>
           <p className="text-xs text-zinc-500">Profil Tel-Talk</p>
         </div>
         <button

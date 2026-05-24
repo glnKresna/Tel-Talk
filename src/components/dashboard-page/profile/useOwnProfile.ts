@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { updateProfile, type User } from 'firebase/auth'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../../../config/firebase'
 import { uploadFileToCloudinary } from '../../../lib/cloudinaryUpload'
 import { syncDiscoverabilityProfile } from '../../../lib/syncPublicProfile'
@@ -11,10 +11,12 @@ type Options = {
   isModalOpen: boolean
 }
 
+const USERNAME_REGEX = /^[a-zA-Z0-9_.]+$/
+
 export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options) {
   const [isLoading, setIsLoading] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
-  const [displayName, setDisplayName] = useState('')
+  const [displayName, setDisplayName] = useState('') // represents "username" in UI
   const [savedDisplayName, setSavedDisplayName] = useState('')
   const [photoURL, setPhotoURL] = useState<string | null>(null)
   const [isSavingName, setIsSavingName] = useState(false)
@@ -27,8 +29,8 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
 
   const fallbackName = useMemo(() => {
     const email = currUserEmail ?? ''
-    if (!email) return 'User'
-    return email.split('@')[0] || 'User'
+    if (!email) return 'user'
+    return email.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '') || 'user'
   }, [currUserEmail])
 
   const sidebarDisplayName = (
@@ -57,6 +59,7 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
         if (cancelled) return
 
         const resolvedDisplayName =
+          (typeof data?.username === 'string' && data.username.trim()) ||
           (typeof data?.nama === 'string' && data.nama.trim()) ||
           currUser.displayName ||
           fallbackName
@@ -93,6 +96,7 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
 
         if (cancelled) return
         const resolvedDisplayName =
+          (typeof data?.username === 'string' && data.username.trim()) ||
           (typeof data?.nama === 'string' && data.nama.trim()) ||
           currUser.displayName ||
           fallbackName
@@ -122,38 +126,61 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
 
   const saveDisplayName = async () => {
     if (!currUser) return
-    const nextName = displayName.trim()
-    if (!nextName) {
-      setProfileError('Nama tidak boleh kosong.')
+    const nextUsername = displayName.trim()
+    if (!nextUsername) {
+      setProfileError('Username tidak boleh kosong.')
+      return
+    }
+    if (nextUsername.length < 3) {
+      setProfileError('Username minimal 3 karakter.')
+      return
+    }
+    if (!USERNAME_REGEX.test(nextUsername)) {
+      setProfileError('Username hanya boleh berisi huruf, angka, underscore (_), dan titik (.)')
       return
     }
 
     setIsSavingName(true)
     setProfileError(null)
+
     try {
-      const prevName = savedDisplayName
-      await updateDoc(doc(db, 'users', currUser.uid), { nama: nextName })
+      // Cek keunikan di Firestore
+      const q = query(
+        collection(db, 'publicProfiles'),
+        where('username_lowercase', '==', nextUsername.toLowerCase())
+      )
+      const snap = await getDocs(q)
+      const taken = snap.docs.some(doc => doc.id !== currUser.uid)
+      if (taken) {
+        setProfileError('Username sudah terpakai oleh pengguna lain.')
+        setIsSavingName(false)
+        return
+      }
+
+      const prevUsername = savedDisplayName
+      await updateDoc(doc(db, 'users', currUser.uid), { username: nextUsername })
       try {
-        await updateProfile(currUser, { displayName: nextName })
+        await updateProfile(currUser, { displayName: nextUsername })
       } catch (e) {
         try {
-          await updateDoc(doc(db, 'users', currUser.uid), { nama: prevName })
+          await updateDoc(doc(db, 'users', currUser.uid), { username: prevUsername })
         } catch {
           // ignore rollback failure
         }
         throw e
       }
-      setSavedDisplayName(nextName)
+
+      setSavedDisplayName(nextUsername)
       await syncDiscoverabilityProfile({
         uid: currUser.uid,
         email: currUserEmail ?? currUser.email,
-        nama: nextName,
+        username: nextUsername,
         photoURL,
         bio,
       })
-      triggerToast('Nama berhasil disimpan.')
+      triggerToast('Username berhasil disimpan.')
     } catch {
-      setProfileError('Gagal menyimpan nama. Coba lagi.')
+      setProfileError('Gagal menyimpan username. Coba lagi.')
     } finally {
       setIsSavingName(false)
     }
@@ -170,7 +197,7 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
       await syncDiscoverabilityProfile({
         uid: currUser.uid,
         email: currUserEmail ?? currUser.email,
-        nama: savedDisplayName,
+        username: savedDisplayName,
         photoURL,
         bio: nextBio,
       })
@@ -219,7 +246,7 @@ export function useOwnProfile({ currUser, currUserEmail, isModalOpen }: Options)
       await syncDiscoverabilityProfile({
         uid: currUser.uid,
         email: currUserEmail ?? currUser.email,
-        nama: savedDisplayName,
+        username: savedDisplayName,
         photoURL: url,
         bio: savedBio,
       })

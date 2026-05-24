@@ -1,13 +1,13 @@
-import type { RefObject } from 'react'
-import type { ActiveTab, Room } from '../../../types/dashboardTypes'
-import type { ContactAddedVia, ContactWithProfile, PublicProfile } from '../../../types/contactTypes'
-import { DashboardSidebar } from '../sidebar/DashboardSidebar'
+import type { RefObject, Dispatch, SetStateAction } from 'react'
+import type { ActiveTab, Room, ModalState } from '../../../types/dashboardTypes'
+import type { ContactWithProfile } from '../../../types/contactTypes'
+import { getContactDisplayName } from '../../../types/contactTypes'
+import { NavRail } from './NavRail'
+import { DashboardSubPanel } from './DashboardSubPanel'
 import { ChatHeader } from '../chat/ChatHeader'
 import { ChatbotHeader } from '../ai/ChatbotHeader'
-import { ContactsHeader } from '../contacts/ContactsHeader'
 import { ChatPanel } from '../chat/ChatPanel'
 import { ChatbotPanel } from '../ai/ChatbotPanel'
-import { ContactsPanel } from '../contacts/ContactsPanel'
 
 type Props = {
   activeTab: ActiveTab
@@ -15,27 +15,21 @@ type Props = {
   rooms: Room[]
   activeRoom: Room
   onSelectRoom: (room: Room) => void
-  isSidebarOpen: boolean
-  onToggleSidebar: () => void
   messageCount: number
   bottomRef: RefObject<HTMLDivElement | null>
   profileDisplayName: string
   profilePhotoURL: string | null
-  isProfileOpen: boolean
   onOpenProfile: () => void
-  currentUserId: string
   contacts: ContactWithProfile[]
   contactsLoading: boolean
   selectedContactId: string | null
   selectedContact: ContactWithProfile | null
   onSelectContact: (contactUid: string) => void
-  isContact: (uid: string) => boolean
-  onSaveContact: (uid: string, via: ContactAddedVia) => Promise<void>
-  onViewUserProfile: (profile: PublicProfile) => void
   onContactUser: (uid: string) => Promise<void>
   onRenameContact: (contact: ContactWithProfile) => void
   onRemoveContact: (contact: ContactWithProfile) => void
-  onContactsToast: (msg: string) => void
+  plusModal: ModalState
+  setPlusModal: Dispatch<SetStateAction<ModalState>>
 }
 
 export function DashboardShell({
@@ -44,79 +38,86 @@ export function DashboardShell({
   rooms,
   activeRoom,
   onSelectRoom,
-  isSidebarOpen,
-  onToggleSidebar,
   messageCount,
   bottomRef,
   profileDisplayName,
   profilePhotoURL,
-  isProfileOpen,
   onOpenProfile,
-  currentUserId,
   contacts,
   contactsLoading,
   selectedContactId,
   selectedContact,
   onSelectContact,
-  isContact,
-  onSaveContact,
-  onViewUserProfile,
   onContactUser,
   onRenameContact,
   onRemoveContact,
-  onContactsToast,
+  plusModal,
+  setPlusModal,
 }: Props) {
   return (
-    <div className="flex h-screen bg-[#0f0f14] text-white overflow-hidden">
-      <DashboardSidebar
+    <div className="flex h-screen bg-[#0f0f14] text-white overflow-hidden select-none">
+      
+      <NavRail 
+        activeTab={activeTab} 
+        onTabChange={onTabChange} 
+        profilePhotoURL={profilePhotoURL}
+        profileDisplayName={profileDisplayName}
+        onOpenProfile={onOpenProfile}
+      />
+
+      <DashboardSubPanel 
         activeTab={activeTab}
-        onTabChange={onTabChange}
         rooms={rooms}
         activeRoomId={activeRoom.id}
         onSelectRoom={onSelectRoom}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={onToggleSidebar}
-        profileDisplayName={profileDisplayName}
-        profilePhotoURL={profilePhotoURL}
-        isProfileOpen={isProfileOpen}
-        onOpenProfile={onOpenProfile}
         contacts={contacts}
         contactsLoading={contactsLoading}
         selectedContactId={selectedContactId}
         onSelectContact={onSelectContact}
         onRenameContact={onRenameContact}
-        onContactPeer={(c) => void onContactUser(c.contactUid)}
         onRemoveContact={onRemoveContact}
+        onContactPeer={(contact) => onContactUser(contact.contactUid)}
+        plusModal={plusModal}
+        setPlusModal={setPlusModal}
       />
 
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.06] bg-[#13131a]/50 backdrop-blur-sm">
-          {activeTab === 'chat' && (
+      <main className="flex-1 flex flex-col min-w-0 bg-[#0c0c10]">
+        <header className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.06] bg-[#13131a]/50 backdrop-blur-sm h-[65px]">
+          {activeTab === 'dms' && (
+            <div className="text-sm font-medium text-white/80">
+              {selectedContact ? `Chat dengan ${getContactDisplayName(selectedContact)}` : 'Pilih Kontak'}
+            </div>
+          )}
+          {activeTab === 'rooms' && (
             <ChatHeader activeRoom={activeRoom} messageCount={messageCount} />
           )}
-          {activeTab === 'contacts' && (
-            <ContactsHeader contactCount={contacts.length} />
+          {activeTab === 'pinned' && (
+            <div className="text-sm font-medium text-white/80">Pesan Tersemat</div>
           )}
           {activeTab === 'ai' && <ChatbotHeader />}
         </header>
 
-        {activeTab === 'chat' && (
-          <ChatPanel activeRoom={activeRoom} bottomRef={bottomRef} />
-        )}
-        {activeTab === 'contacts' && (
-          <ContactsPanel
-            currentUserId={currentUserId}
-            selectedContact={selectedContact}
-            isContact={isContact}
-            onSaveContact={onSaveContact}
-            onViewProfile={onViewUserProfile}
-            onContactUser={onContactUser}
-            onRenameContact={onRenameContact}
-            onRemoveContact={onRemoveContact}
-            toast={onContactsToast}
-          />
-        )}
-        {activeTab === 'ai' && <ChatbotPanel bottomRef={bottomRef} />}
+        <div className="flex-1 overflow-hidden relative flex flex-col">
+          {activeTab === 'dms' && selectedContact && (
+            <ChatPanel activeRoom={{ id: selectedContact.contactUid, name: getContactDisplayName(selectedContact), icon: '👤' }} bottomRef={bottomRef} />
+          )}
+          {activeTab === 'dms' && !selectedContact && (
+            <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2">
+              <span className="text-4xl">💬</span>
+              <p className="text-sm">Silakan pilih kontak untuk memulai obrolan pribadi</p>
+            </div>
+          )}
+          {activeTab === 'rooms' && (
+            <ChatPanel activeRoom={activeRoom} bottomRef={bottomRef} />
+          )}
+          {activeTab === 'pinned' && (
+            <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2">
+              <span className="text-4xl">📌</span>
+              <p className="text-sm">Pesan yang Anda pin akan muncul di sini</p>
+            </div>
+          )}
+          {activeTab === 'ai' && <ChatbotPanel bottomRef={bottomRef} />}
+        </div>
       </main>
     </div>
   )

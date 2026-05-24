@@ -71,7 +71,7 @@ export function OwnProfileModal({
         />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-white truncate">
-            {displayName.trim() || fallbackName}
+            {displayName.trim() ? `@${displayName.trim()}` : `@${fallbackName}`}
           </p>
           <p className="text-xs text-zinc-400 truncate">{currUserEmail}</p>
         </div>
@@ -110,14 +110,14 @@ export function OwnProfileModal({
 
         <EditableField
           variant="dashboard"
-          label="Nama tampilan"
+          label="Username"
           value={displayName}
           savedValue={savedDisplayName}
           onChange={setDisplayName}
           onSave={() => void saveDisplayName()}
           disabled={isLoading}
           saving={isSavingName}
-          placeholder={fallbackName}
+          placeholder="username"
           saveLabel="Simpan"
           saveVariant="primary"
         />

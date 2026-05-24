@@ -8,21 +8,22 @@ export function normalizeEmail(email: string): string {
 export type DiscoverabilityInput = {
   uid: string
   email: string | null | undefined
-  nama: string
+  username: string
   photoURL?: string | null
   bio?: string
 }
 
 /** Sinkronkan profil publik + lookup email (discoverability). */
 export async function syncDiscoverabilityProfile(input: DiscoverabilityInput): Promise<void> {
-  const { uid, email, nama, photoURL = null, bio = '' } = input
-  const trimmedName = nama.trim() || 'User'
+  const { uid, email, username, photoURL = null, bio = '' } = input
+  const trimmedUsername = username.trim() || 'user'
 
   await setDoc(
     doc(db, 'publicProfiles', uid),
     {
       uid,
-      nama: trimmedName,
+      username: trimmedUsername,
+      username_lowercase: trimmedUsername.toLowerCase(),
       photoURL,
       bio: bio.trim(),
       updatedAt: serverTimestamp(),
@@ -33,7 +34,7 @@ export async function syncDiscoverabilityProfile(input: DiscoverabilityInput): P
   if (email) {
     await setDoc(
       doc(db, 'userLookup', normalizeEmail(email)),
-      { uid, nama: trimmedName },
+      { uid, username: trimmedUsername },
       { merge: true },
     )
   }
@@ -54,8 +55,11 @@ export async function ensureDiscoverabilityProfile(
   const userSnap = await getDoc(doc(db, 'users', uid))
   const data = userSnap.exists() ? userSnap.data() : null
 
-  const nama =
-    (typeof data?.nama === 'string' && data.nama.trim()) || fallbackName
+  const username =
+    (typeof data?.username === 'string' && data.username.trim()) ||
+    (typeof data?.nama === 'string' && data.nama.trim()) ||
+    fallbackName
+
   const photoURL =
     (typeof data?.photoURL === 'string' && data.photoURL) || null
   const bio = (typeof data?.bio === 'string' && data.bio) || ''
@@ -63,7 +67,7 @@ export async function ensureDiscoverabilityProfile(
   await syncDiscoverabilityProfile({
     uid,
     email: email ?? (typeof data?.email === 'string' ? data.email : null),
-    nama,
+    username,
     photoURL,
     bio,
   })

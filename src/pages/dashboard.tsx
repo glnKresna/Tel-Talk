@@ -7,11 +7,12 @@ import { DashboardShell } from '../components/dashboard-page/layout/DashboardShe
 import { OwnProfileModal } from '../components/dashboard-page/profile/OwnProfileModal'
 import { UserProfileModal } from '../components/dashboard-page/profile/UserProfileModal'
 import { EditContactNameModal } from '../components/dashboard-page/contacts/EditContactNameModal'
+import { AddContactModal } from '../components/dashboard-page/contacts/AddContactModal'
 import { useOwnProfile } from '../components/dashboard-page/profile/useOwnProfile'
 import { ProfileToast } from '../components/dashboard-page/ProfileToast'
 import { ensureDiscoverabilityProfile } from '../lib/syncPublicProfile'
 import { ensureConversation } from '../lib/conversations'
-import type { ActiveTab, Room } from '../types/dashboardTypes'
+import type { ActiveTab, Room, ModalState } from '../types/dashboardTypes'
 import type { ContactAddedVia, ContactWithProfile, PublicProfile } from '../types/contactTypes'
 
 const ROOMS: Room[] = [
@@ -21,14 +22,18 @@ const ROOMS: Room[] = [
 ]
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('chat')
+  // Mengubah default tab ke 'dms' sesuai UI baru
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dms')
   const [activeRoom, setActiveRoom] = useState<Room>(ROOMS[0])
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const [viewProfile, setViewProfile] = useState<PublicProfile | null>(null)
   const [renameContact, setRenameContact] = useState<ContactWithProfile | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  
+  // State Baru untuk mengontrol Floating Window opsi '+'
+  const [plusModal, setPlusModal] = useState<ModalState>({ isOpen: false, type: null })
+  
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { currUser, logoutUser } = useAuthStore()
@@ -72,7 +77,8 @@ export default function Dashboard() {
   }, [currUser, subscribeContacts])
 
   useEffect(() => {
-    if (activeTab !== 'chat') return
+    // Rooms hanya berjalan jika tab yang aktif adalah rooms
+    if (activeTab !== 'rooms') return
     const unsubscribe = subscribeToRoom(activeRoom.id)
     return () => unsubscribe()
   }, [activeRoom.id, subscribeToRoom, activeTab])
@@ -115,27 +121,21 @@ export default function Dashboard() {
         rooms={ROOMS}
         activeRoom={activeRoom}
         onSelectRoom={setActiveRoom}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen((v) => !v)}
         messageCount={messages.length}
         bottomRef={bottomRef}
         profileDisplayName={profile.sidebarDisplayName}
         profilePhotoURL={profile.photoURL}
-        isProfileOpen={isProfileOpen}
         onOpenProfile={() => setIsProfileOpen(true)}
-        currentUserId={currUser.uid}
         contacts={contacts}
         contactsLoading={contactsLoading}
         selectedContactId={selectedContactId}
         selectedContact={selectedContact}
         onSelectContact={setSelectedContactId}
-        isContact={isContact}
-        onSaveContact={handleSaveContact}
-        onViewUserProfile={setViewProfile}
         onContactUser={handleContactUser}
         onRenameContact={setRenameContact}
         onRemoveContact={(c) => void handleRemoveContact(c)}
-        onContactsToast={triggerToast}
+        plusModal={plusModal}
+        setPlusModal={setPlusModal}
       />
 
       <OwnProfileModal
@@ -163,6 +163,16 @@ export default function Dashboard() {
           await updateCustomName(currUser.uid, renameContact.contactUid, customName)
           triggerToast('Nama kontak diperbarui.')
         }}
+      />
+
+      <AddContactModal
+        open={plusModal.isOpen && plusModal.type === 'add_contact'}
+        onClose={() => setPlusModal({ isOpen: false, type: null })}
+        currentUserId={currUser.uid}
+        isContact={isContact}
+        onSaveContact={handleSaveContact}
+        onViewProfile={setViewProfile}
+        onContactUser={handleContactUser}
       />
 
       <ProfileToast message={toastMsg ?? profile.toastMsg} />

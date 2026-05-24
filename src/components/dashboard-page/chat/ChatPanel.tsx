@@ -154,11 +154,17 @@ export function ChatPanel({ activeRoom, bottomRef }: Props) {
 
       {filePreview && (
         <div className="mx-6 mb-2 flex items-center gap-3 bg-[#1e1e2a] border border-white/[0.08] rounded-xl p-3">
-          {filePreview.previewUrl ? (
+          {filePreview.previewUrl && filePreview.file.type.startsWith('image/') ? (
             <img src={filePreview.previewUrl} alt="preview" className="w-12 h-12 rounded-lg object-cover" />
           ) : (
-            <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center">
-              <span className="text-zinc-400">📄</span>
+            <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-xl">
+              <span className="text-zinc-400">
+                {filePreview.file.type.startsWith('video/')
+                  ? '🎥'
+                  : filePreview.file.type.startsWith('audio/')
+                  ? '🎵'
+                  : '📄'}
+              </span>
             </div>
           )}
           <div className="flex-1 min-w-0">

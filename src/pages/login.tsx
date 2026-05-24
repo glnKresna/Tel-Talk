@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { sendEmailVerification } from 'firebase/auth';
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);

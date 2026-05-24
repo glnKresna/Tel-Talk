@@ -24,12 +24,12 @@ export function UserSearchResultCard({
     <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e2a] border border-white/[0.08]">
       <AvatarCircle
         photoURL={profile.photoURL}
-        displayName={profile.nama}
+        displayName={`@${profile.username}`}
         size="sm"
         variant="dashboard"
       />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white truncate">{profile.nama}</p>
+        <p className="text-sm font-semibold text-white truncate">{`@${profile.username}`}</p>
         {profile.bio.trim() && (
           <p className="text-xs text-zinc-500 truncate">{profile.bio}</p>
         )}

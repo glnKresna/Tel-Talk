@@ -66,8 +66,8 @@ export const useContactStore = create<ContactStore>((set, get) => ({
         )
 
         withProfiles.sort((a, b) =>
-          (a.customName || a.profile?.nama || '').localeCompare(
-            b.customName || b.profile?.nama || '',
+          (a.customName || a.profile?.username || '').localeCompare(
+            b.customName || b.profile?.username || '',
           ),
         )
 

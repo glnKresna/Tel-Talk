@@ -22,7 +22,7 @@ export function ContactListItem({
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const displayName = getContactDisplayName(contact)
-  const legalName = contact.profile?.nama
+  const legalName = contact.profile?.username
 
   return (
     <div className="relative">
@@ -43,7 +43,7 @@ export function ContactListItem({
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{displayName}</p>
           {contact.customName && legalName && (
-            <p className="text-[10px] text-zinc-500 truncate">{legalName}</p>
+            <p className="text-[10px] text-zinc-500 truncate">{`@${legalName}`}</p>
           )}
         </div>
         <button

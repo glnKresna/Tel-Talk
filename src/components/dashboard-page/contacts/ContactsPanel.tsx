@@ -60,8 +60,8 @@ export function ContactsPanel({
                 <p className="text-sm font-semibold text-white truncate">
                   {getContactDisplayName(selectedContact)}
                 </p>
-                {selectedContact.customName && selectedContact.profile?.nama && (
-                  <p className="text-xs text-zinc-500 truncate">{selectedContact.profile.nama}</p>
+                {selectedContact.customName && selectedContact.profile?.username && (
+                  <p className="text-xs text-zinc-500 truncate">{`@${selectedContact.profile.username}`}</p>
                 )}
                 {selectedContact.profile?.bio && (
                   <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{selectedContact.profile.bio}</p>
