@@ -5,6 +5,7 @@ import Landing from './pages/landing';
 import Login from './pages/login'
 import ChatDashboard from './pages/chatDashboard'
 import VerifyEmail from './pages/verifyEmail';
+import ForgotPassword from './pages/forgotPassword';
 
 // Komponen wrapper buat route yang butuh login
 export function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -57,6 +58,7 @@ export default function App() {
       <Route path="/landing" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       {/* Protected route — harus login dulu */}
       <Route
         path="/"

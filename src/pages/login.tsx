@@ -218,7 +218,11 @@ export default function Login() {
             {/* FORGOT PASSWORD LINK */}
             {!isRegister && (
               <div className="flex justify-start mt-1">
-                <button type="button" className="text-xs text-zinc-500 hover:text-violet-400 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-xs text-zinc-500 hover:text-violet-400 transition-colors"
+                >
                   Lupa password?
                 </button>
               </div>

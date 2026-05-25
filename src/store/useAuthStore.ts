@@ -4,6 +4,8 @@ import { auth } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { syncDiscoverabilityProfile } from '../lib/syncPublicProfile';
 
 interface AuthState {
     currUser: User | null;
@@ -17,6 +19,7 @@ interface AuthState {
     loginUser: (email: string, pass: string) => Promise<void>;
     logoutUser: () => Promise<void>;
     reloadUser: () => Promise<void>;
+    forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useAuthStore = create<AuthState> ((set) => ({
@@ -109,10 +112,18 @@ export const useAuthStore = create<AuthState> ((set) => ({
         const user = auth.currentUser;
         if (user) {
             await user.reload(); // Paksa Firebase buat refresh data user
-            if (user.emailVerified) {
-                await setDoc(
-                    doc(db, "users", user.uid),{emailVerified: true},{ merge: true });
-                set({ currUser: { ...user } as any });
+            const updatedUser = auth.currentUser;
+            if (updatedUser?.emailVerified) {
+                try {
+                    await setDoc(
+                        doc(db, "users", updatedUser.uid),
+                        {emailVerified: true},
+                        {merge: true}
+                    );
+                } catch (e) {
+                    console.error("Gagal memperbarui status verifikasi di Firestore:", e);
+                }
+                set({currUser: updatedUser});
             }
         }
     },
@@ -127,6 +138,36 @@ export const useAuthStore = create<AuthState> ((set) => ({
         } catch (err: any) {
             set({error: err.code, currUser: null, isLoading: false});
         };
+    },
+
+    // Lupa Password
+    forgotPassword: async (email) => {
+        set({ isLoading: true, error: null });
+        
+        try {
+            // Cek email terdaftar di Firestore
+            const result = await useAuthStore.getState().cekEmailTerdaftar(email);
+            
+            // Email tidak ada
+            if (!result.exists) {
+                set({error: 'Email tidak terdaftar', isLoading: false});
+                return {success: false, error: 'Email tidak terdaftar'};
+            }
+            
+            // Email belum verifikasi
+            if (!result.verified) {
+                set({error: 'Email belum diverifikasi. Login untuk kirim ulang email verifikasi.', isLoading: false});
+                return {success: false, error: 'Email belum diverifikasi. Login untuk kirim ulang email verifikasi.'};
+            }
+            
+            // Kirim reset password
+            await sendPasswordResetEmail(auth, email);
+            set({isLoading: false});
+            return {success: true};
+        } catch (err: any) {
+            set({error: err.code || err.message, isLoading: false});
+            return {success: false, error: err.code || err.message};
+        }
     },
 
     // Logout
