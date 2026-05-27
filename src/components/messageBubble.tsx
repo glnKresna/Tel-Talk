@@ -1,10 +1,11 @@
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
-import { Download, ExternalLink, Pin, X } from 'lucide-react'
+import { Download, ExternalLink, Star, X } from 'lucide-react'
 import { Edit3, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import type { Pesan } from '../store/useMsgStore'
 import { useMsgStore } from '../store/useMsgStore'
+import { auth } from '../config/firebase'
 
 type Props = {
   roomId: string
@@ -29,7 +30,8 @@ export default function MessageBubble({
     y: 0,
   })
 
-  const { togglePin } = useMsgStore()
+  const { toggleStar, starredMessages } = useMsgStore()
+  const isStarred = starredMessages.some((m) => m.id === message.id)
 
   const formattedTime = waktuKirim?.toDate ? format(waktuKirim.toDate(), 'HH:mm', { locale: id }) : ''
 
@@ -106,11 +108,11 @@ export default function MessageBubble({
     setMenu({ open: true, x, y })
   }
 
-  const onPinClick = async () => {
+  const onStarClick = async () => {
     setMenu((m) => ({ ...m, open: false }))
     if (!message.id) return
-    const nextPinned = !Boolean(message.isPinned)
-    await togglePin(roomId, message.id, nextPinned)
+    const parentType = roomId.includes('_') ? 'conversations' : 'rooms'
+    await toggleStar(auth.currentUser?.uid || '', roomId, message, parentType)
   }
 
   const onEditClick = async () => {
@@ -129,114 +131,114 @@ export default function MessageBubble({
     <>
       <div
         className={`flex items-end gap-2 mb-3 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}
-        onContextMenu={openContextMenu}
       >
-      {!isOwnMessage && (
-        <div className="w-7 h-7 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mb-1">
-          <span className="text-[10px] font-bold text-violet-300">
-            {senderName?.[0]?.toUpperCase() ?? '?'}
-          </span>
-        </div>
-      )}
-
-      <div className={`flex flex-col gap-1 max-w-[72%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         {!isOwnMessage && (
-          <span className="text-[10px] text-zinc-500 px-1">{senderName}</span>
+          <div className="w-7 h-7 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mb-1">
+            <span className="text-[10px] font-bold text-violet-300">
+              {senderName?.[0]?.toUpperCase() ?? '?'}
+            </span>
+          </div>
         )}
 
-        <div
-          className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-md
-            ${isOwnMessage
-              ? 'bg-violet-600 text-white rounded-br-sm'
-              : 'bg-[#1e1e2a] border border-white/[0.06] text-zinc-200 rounded-bl-sm'
-            }`}
-        >
-          {fileUrl && (
-            <div className="mb-2">
-              {isImage && (
-                <button type="button" onClick={() => setIsPreviewOpen(true)} className="block">
-                  <img
-                    src={fileUrl}
-                    alt={prettyFileName}
-                    className="max-w-[260px] max-h-[200px] rounded-xl object-cover cursor-zoom-in hover:opacity-95 transition-opacity"
-                  />
-                </button>
-              )}
-
-              {isVideo && (
-                <button type="button" onClick={() => setIsPreviewOpen(true)} className="block">
-                  <video src={fileUrl} className="max-w-[260px] rounded-xl cursor-zoom-in" />
-                </button>
-              )}
-
-              {isAudio && (
-                <audio src={fileUrl} controls className="w-full" />
-              )}
-
-              {!isImage && !isVideo && !isAudio && (
-                <div className="space-y-2">
-                  <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium
-                      ${isOwnMessage
-                        ? 'bg-white/10 hover:bg-white/20 text-white'
-                        : 'bg-white/5 hover:bg-white/10 text-zinc-300'
-                      } transition-colors`}
-                  >
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <span className="truncate max-w-[180px]">{prettyFileName}</span>
-                  </a>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleDownload}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors
-                        ${isOwnMessage
-                          ? 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
-                          : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-200'
-                        }`}
-                    >
-                      Unduh
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenWith}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors
-                        ${isOwnMessage
-                          ? 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
-                          : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-200'
-                        }`}
-                    >
-                      Buka dengan...
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+        <div className={`flex flex-col gap-1 max-w-[72%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+          {!isOwnMessage && (
+            <span className="text-[10px] text-zinc-500 px-1">{senderName}</span>
           )}
 
-          {isiPesan && <p className="break-words">{isiPesan}</p>}
-
-          <span
-            className={`block text-right text-[10px] mt-1 select-none
-              ${isOwnMessage ? 'text-violet-200/60' : 'text-zinc-500'}`}
+          <div
+            className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-md select-text
+              ${isOwnMessage
+                ? 'bg-violet-600 text-white rounded-br-sm'
+                : 'bg-[#1e1e2a] border border-white/[0.06] text-zinc-200 rounded-bl-sm'
+              }`}
+            onContextMenu={openContextMenu}
           >
-            {message.isPinned && <span className="mr-1">📌</span>}
-            {message.editedAt && <span className="mr-1">(diedit)</span>}
-            {formattedTime}
-          </span>
+            {fileUrl && (
+              <div className="mb-2">
+                {isImage && (
+                  <button type="button" onClick={() => setIsPreviewOpen(true)} className="block">
+                    <img
+                      src={fileUrl}
+                      alt={prettyFileName}
+                      className="max-w-[260px] max-h-[200px] rounded-xl object-cover cursor-zoom-in hover:opacity-95 transition-opacity"
+                    />
+                  </button>
+                )}
+
+                {isVideo && (
+                  <button type="button" onClick={() => setIsPreviewOpen(true)} className="block">
+                    <video src={fileUrl} className="max-w-[260px] rounded-xl cursor-zoom-in" />
+                  </button>
+                )}
+
+                {isAudio && (
+                  <audio src={fileUrl} controls className="w-full" />
+                )}
+
+                {!isImage && !isVideo && !isAudio && (
+                  <div className="space-y-2">
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium
+                        ${isOwnMessage
+                          ? 'bg-white/10 hover:bg-white/20 text-white'
+                          : 'bg-white/5 hover:bg-white/10 text-zinc-300'
+                        } transition-colors`}
+                    >
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <span className="truncate max-w-[180px]">{prettyFileName}</span>
+                    </a>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownload}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors
+                          ${isOwnMessage
+                            ? 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-200'
+                          }`}
+                      >
+                        Unduh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleOpenWith}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors
+                          ${isOwnMessage
+                            ? 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-200'
+                          }`}
+                      >
+                        Buka dengan...
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isiPesan && <p className="break-words">{isiPesan}</p>}
+
+            <span
+              className={`block text-right text-[10px] mt-1 select-none
+                ${isOwnMessage ? 'text-violet-200/60' : 'text-zinc-500'}`}
+            >
+              {isStarred && <span className="mr-1 text-yellow-400">⭐</span>}
+              {message.editedAt && <span className="mr-1">(diedit)</span>}
+              {formattedTime}
+            </span>
+          </div>
         </div>
-      </div>
       </div>
 
       {menu.open && (
@@ -248,11 +250,11 @@ export default function MessageBubble({
           <div className="w-[200px] rounded-xl bg-[#13131a] border border-white/[0.08] shadow-2xl overflow-hidden">
             <button
               type="button"
-              onClick={() => void onPinClick()}
+              onClick={() => void onStarClick()}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06] transition-colors"
             >
-              <Pin size={16} className="text-zinc-300" />
-              <span>{message.isPinned ? 'Unpin pesan' : 'Pin pesan'}</span>
+              <Star size={16} className="text-zinc-300" />
+              <span>{isStarred ? 'Hilangkan bintang' : 'Bintangi pesan'}</span>
             </button>
 
             {isOwnMessage && (
@@ -296,12 +298,12 @@ export default function MessageBubble({
             <div className="absolute top-3 right-3 z-10 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 type="button"
-                onClick={() => void onPinClick()}
+                onClick={() => void onStarClick()}
                 className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors
-                  ${message.isPinned ? 'bg-violet-600/20 border-violet-500/30 text-violet-200' : 'bg-white/[0.06] border-white/[0.08] text-white/80 hover:bg-white/[0.10]'}`}
-                title="Pin"
+                  ${isStarred ? 'bg-violet-600/20 border-violet-500/30 text-violet-200' : 'bg-white/[0.06] border-white/[0.08] text-white/80 hover:bg-white/[0.10]'}`}
+                title="Bintang"
               >
-                <Pin size={18} />
+                <Star size={18} />
               </button>
               <button
                 type="button"

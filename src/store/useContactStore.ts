@@ -60,8 +60,13 @@ export const useContactStore = create<ContactStore>((set, get) => ({
 
         const withProfiles = await Promise.all(
           baseContacts.map(async (contact) => {
-            const profile = await fetchPublicProfile(contact.contactUid)
-            return { ...contact, profile } satisfies ContactWithProfile
+            try {
+              const profile = await fetchPublicProfile(contact.contactUid)
+              return { ...contact, profile } satisfies ContactWithProfile
+            } catch (e) {
+              console.error(`Error fetching profile for ${contact.contactUid}:`, e)
+              return { ...contact, profile: null } satisfies ContactWithProfile
+            }
           }),
         )
 

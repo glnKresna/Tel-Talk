@@ -43,7 +43,7 @@ export function DashboardSubPanel({
     const panelTitles = {
         dms: 'Direct Messages',
         rooms: 'Rooms Channel',
-        pinned: 'Pinned Messages',
+        pinned: 'Pesan Berbintang',
         ai: 'AI Assistant',
     }
 
@@ -97,7 +97,7 @@ export function DashboardSubPanel({
 
             {activeTab === 'pinned' && (
             <div className="text-center text-xs text-white/30 pt-8 px-4">
-                Tidak ada pesan tersemat yang ditemukan.
+                Tidak ada pesan berbintang yang ditemukan.
             </div>
             )}
 

@@ -58,7 +58,7 @@ export function DashboardShell({
   setPlusModal,
   currentUserId,
 }: Props) {
-  const { pinnedMessages, isLoading } = useMsgStore()
+  const { starredMessages, isLoading } = useMsgStore()
 
   return (
     <div className="flex h-screen bg-[#0f0f14] text-white overflow-hidden select-none">
@@ -98,7 +98,7 @@ export function DashboardShell({
             <ChatHeader activeRoom={activeRoom} messageCount={messageCount} />
           )}
           {activeTab === 'pinned' && (
-            <div className="text-sm font-medium text-white/80">Pesan Tersemat</div>
+            <div className="text-sm font-medium text-white/80">Pesan Berbintang</div>
           )}
           {activeTab === 'ai' && <ChatbotHeader />}
         </header>
@@ -117,19 +117,19 @@ export function DashboardShell({
             <ChatPanel activeRoom={activeRoom} bottomRef={bottomRef} />
           )}
           {activeTab === 'pinned' && (
-            isLoading && pinnedMessages.length === 0 ? (
+            isLoading && starredMessages.length === 0 ? (
               <div className="flex justify-center items-center h-full">
                 <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : pinnedMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2 select-none">
-                <span className="text-4xl">📌</span>
-                <p className="text-sm">Belum ada pesan tersemat</p>
-                <p className="text-xs text-zinc-500">Klik kanan pada potongan pesan untuk menyematkannya.</p>
+            ) : starredMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2 select-none text-center px-4">
+                <span className="text-4xl">⭐</span>
+                <p className="text-sm">Belum ada pesan berbintang</p>
+                <p className="text-xs text-zinc-500">Klik kanan pada gelembung pesan di obrolan mana saja untuk membintanginya.</p>
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-                {pinnedMessages.map((msg) => {
+                {starredMessages.map((msg) => {
                   const isOwnMessage = msg.senderId === currentUserId
                   const isRoom = msg.parentType === 'rooms'
                   const room = isRoom ? rooms.find((r) => r.id === msg.parentId) : null

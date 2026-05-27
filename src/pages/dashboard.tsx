@@ -37,7 +37,7 @@ export default function Dashboard() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { currUser, logoutUser } = useAuthStore()
-  const { subscribeToRoom, subscribeToPinnedMessages, messages } = useMsgStore()
+  const { subscribeToRoom, subscribeToStarredMessages, messages } = useMsgStore()
   const { pesan: aiMessages } = useChatbotStore()
   const {
     contacts,
@@ -94,10 +94,10 @@ export default function Dashboard() {
   }, [currUser, activeTab, selectedContactId])
 
   useEffect(() => {
-    if (activeTab !== 'pinned') return
-    const unsubscribe = subscribeToPinnedMessages()
+    if (!currUser) return
+    const unsubscribe = subscribeToStarredMessages(currUser.uid)
     return () => unsubscribe()
-  }, [activeTab, subscribeToPinnedMessages])
+  }, [currUser, subscribeToStarredMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -107,6 +107,8 @@ export default function Dashboard() {
     if (!currUser) return
     await addContact(currUser.uid, contactUid, via)
     setSelectedContactId(contactUid)
+    setPlusModal({ isOpen: false, type: null })
+    setActiveTab('dms')
   }
 
   const handleContactUser = async (peerUid: string) => {

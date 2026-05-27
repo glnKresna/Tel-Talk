@@ -10,8 +10,7 @@ import {
   serverTimestamp,
   Timestamp,
   updateDoc,
-  collectionGroup,
-  where,
+  setDoc,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { uploadFileToCloudinary } from '../lib/cloudinaryUpload'
@@ -27,28 +26,30 @@ export interface Pesan {
   fileName?: string
   fileType?: string
   isPinned?: boolean
+  isStarred?: boolean
   editedAt?: Timestamp | null
   parentId?: string
   parentType?: 'rooms' | 'conversations'
+  starredAt?: Timestamp | null
 }
 
 interface MsgStore {
   messages: Pesan[]
-  pinnedMessages: Pesan[]
+  starredMessages: Pesan[]
   isLoading: boolean
   error: string | null
   subscribeToRoom: (roomId: string) => () => void
-  subscribeToPinnedMessages: () => () => void
+  subscribeToStarredMessages: (userId: string) => () => void
   kirimPesan: (roomId: string, text: string, user: any) => Promise<void>
   kirimLampiran: (roomId: string, file: File, user: any, text?: string) => Promise<void>
-  togglePin: (roomId: string, messageId: string, nextPinned: boolean) => Promise<void>
+  toggleStar: (userId: string, roomId: string, message: Pesan, parentType: 'rooms' | 'conversations') => Promise<void>
   editPesan: (roomId: string, messageId: string, nextText: string) => Promise<void>
   hapusPesan: (roomId: string, messageId: string) => Promise<void>
 }
 
-export const useMsgStore = create<MsgStore>((set) => ({
+export const useMsgStore = create<MsgStore>((set, get) => ({
   messages: [],
-  pinnedMessages: [],
+  starredMessages: [],
   isLoading: false,
   error: null,
 
@@ -82,37 +83,29 @@ export const useMsgStore = create<MsgStore>((set) => ({
     return unsubscribe; 
   },
 
-  subscribeToPinnedMessages: () => {
+  subscribeToStarredMessages: (userId) => {
+    if (!userId) return () => {}
     set({ isLoading: true, error: null });
 
-    const q = query(
-      collectionGroup(db, 'messages'),
-      where('isPinned', '==', true)
-    );
+    const starredRef = collection(db, 'users', userId, 'starredMessages')
+    const q = query(starredRef, orderBy('starredAt', 'desc'))
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const pinnedList = snapshot.docs.map((doc) => {
-          const pathParts = doc.ref.path.split('/');
-          const parentType = pathParts[0] as 'rooms' | 'conversations';
-          const parentId = pathParts[1];
-          return {
-            id: doc.id,
-            parentId,
-            parentType,
-            ...doc.data(),
-          } as Pesan;
-        });
+        const starredList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Pesan[]
 
-        set({ pinnedMessages: pinnedList, isLoading: false, error: null });
+        set({ starredMessages: starredList, isLoading: false, error: null })
       },
       (err) => {
-        console.error("Error loading pinned messages:", err);
+        console.error("Error loading starred messages:", err);
         set({
-          pinnedMessages: [],
+          starredMessages: [],
           isLoading: false,
-          error: 'Gagal memuat pesan tersemat.',
+          error: 'Gagal memuat pesan berbintang.',
         });
       }
     );
@@ -124,7 +117,7 @@ export const useMsgStore = create<MsgStore>((set) => ({
     try {
       const isDM = roomId.includes('_');
       const messagesRef = collection(db, isDM ? 'conversations' : 'rooms', roomId, "messages");
-      const senderName = user.email?.split('@')[0] ?? 'User';
+      const senderName = (user.displayName || user.email?.split('@')[0]) ?? 'User';
       
       await addDoc(messagesRef, {
         isiPesan: text,
@@ -149,7 +142,7 @@ export const useMsgStore = create<MsgStore>((set) => ({
 
       const isDM = roomId.includes('_');
       const messagesRef = collection(db, isDM ? 'conversations' : 'rooms', roomId, "messages");
-      const senderName = user.email?.split('@')[0] ?? 'User';
+      const senderName = (user.displayName || user.email?.split('@')[0]) ?? 'User';
       await addDoc(messagesRef, {
         isiPesan: text,
         senderId: user.uid,
@@ -166,12 +159,32 @@ export const useMsgStore = create<MsgStore>((set) => ({
     }
   },
 
-  togglePin: async (roomId, messageId, nextPinned) => {
+  toggleStar: async (userId, roomId, message, parentType) => {
     try {
-      const isDM = roomId.includes('_');
-      await updateDoc(doc(db, isDM ? 'conversations' : 'rooms', roomId, 'messages', messageId), { isPinned: nextPinned });
+      if (!userId || !message.id) return
+      const starDocRef = doc(db, 'users', userId, 'starredMessages', message.id)
+      const alreadyStarred = get().starredMessages.some((m) => m.id === message.id)
+
+      if (alreadyStarred) {
+        await deleteDoc(starDocRef)
+      } else {
+        await setDoc(starDocRef, {
+          isiPesan: message.isiPesan || '',
+          senderId: message.senderId,
+          senderName: message.senderName,
+          waktuKirim: message.waktuKirim || null,
+          fileUrl: message.fileUrl || null,
+          fileName: message.fileName || null,
+          fileType: message.fileType || null,
+          editedAt: message.editedAt || null,
+          parentId: roomId,
+          parentType,
+          starredAt: serverTimestamp(),
+        })
+      }
     } catch (error) {
-      console.error("Error pin message:", error);
+      console.error("Error toggling star:", error)
+      throw error
     }
   },
 
