@@ -155,28 +155,19 @@ export const useAuthStore = create<AuthState> ((set) => ({
         set({ isLoading: true, error: null });
         
         try {
-            // Cek email terdaftar di Firestore
-            const result = await useAuthStore.getState().cekEmailTerdaftar(email);
-            
-            // Email tidak ada
-            if (!result.exists) {
-                set({error: 'Email tidak terdaftar', isLoading: false});
-                return {success: false, error: 'Email tidak terdaftar'};
-            }
-            
-            // Email belum verifikasi
-            if (!result.verified) {
-                set({error: 'Email belum diverifikasi. Login untuk kirim ulang email verifikasi.', isLoading: false});
-                return {success: false, error: 'Email belum diverifikasi. Login untuk kirim ulang email verifikasi.'};
-            }
-            
-            // Kirim reset password
+            // Kirim reset password langsung via Firebase Auth
             await sendPasswordResetEmail(auth, email);
             set({isLoading: false});
             return {success: true};
         } catch (err: any) {
-            set({error: err.code || err.message, isLoading: false});
-            return {success: false, error: err.code || err.message};
+            let errorMsg = err.code || err.message;
+            if (errorMsg.includes('auth/user-not-found') || errorMsg.includes('user-not-found')) {
+                errorMsg = 'Email tidak terdaftar.';
+            } else if (errorMsg.includes('auth/invalid-email') || errorMsg.includes('invalid-email')) {
+                errorMsg = 'Format email tidak valid.';
+            }
+            set({error: errorMsg, isLoading: false});
+            return {success: false, error: errorMsg};
         }
     },
 

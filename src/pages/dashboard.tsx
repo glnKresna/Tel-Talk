@@ -37,7 +37,7 @@ export default function Dashboard() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { currUser, logoutUser } = useAuthStore()
-  const { subscribeToRoom, messages } = useMsgStore()
+  const { subscribeToRoom, subscribeToPinnedMessages, messages } = useMsgStore()
   const { pesan: aiMessages } = useChatbotStore()
   const {
     contacts,
@@ -77,11 +77,27 @@ export default function Dashboard() {
   }, [currUser, subscribeContacts])
 
   useEffect(() => {
-    // Rooms hanya berjalan jika tab yang aktif adalah rooms
-    if (activeTab !== 'rooms') return
-    const unsubscribe = subscribeToRoom(activeRoom.id)
+    if (!currUser) return
+    if (activeTab === 'rooms') {
+      const unsubscribe = subscribeToRoom(activeRoom.id)
+      return () => unsubscribe()
+    } else if (activeTab === 'dms' && selectedContactId) {
+      const conversationId = [currUser.uid, selectedContactId].sort().join('_')
+      const unsubscribe = subscribeToRoom(conversationId)
+      return () => unsubscribe()
+    }
+  }, [activeTab, activeRoom.id, selectedContactId, currUser, subscribeToRoom])
+
+  useEffect(() => {
+    if (!currUser || activeTab !== 'dms' || !selectedContactId) return
+    void ensureConversation(currUser.uid, selectedContactId)
+  }, [currUser, activeTab, selectedContactId])
+
+  useEffect(() => {
+    if (activeTab !== 'pinned') return
+    const unsubscribe = subscribeToPinnedMessages()
     return () => unsubscribe()
-  }, [activeRoom.id, subscribeToRoom, activeTab])
+  }, [activeTab, subscribeToPinnedMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -136,6 +152,7 @@ export default function Dashboard() {
         onRemoveContact={(c) => void handleRemoveContact(c)}
         plusModal={plusModal}
         setPlusModal={setPlusModal}
+        currentUserId={currUser.uid}
       />
 
       <OwnProfileModal

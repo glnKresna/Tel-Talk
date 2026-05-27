@@ -8,6 +8,8 @@ import { ChatHeader } from '../chat/ChatHeader'
 import { ChatbotHeader } from '../ai/ChatbotHeader'
 import { ChatPanel } from '../chat/ChatPanel'
 import { ChatbotPanel } from '../ai/ChatbotPanel'
+import MessageBubble from '../../messageBubble'
+import { useMsgStore } from '../../../store/useMsgStore'
 
 type Props = {
   activeTab: ActiveTab
@@ -30,6 +32,7 @@ type Props = {
   onRemoveContact: (contact: ContactWithProfile) => void
   plusModal: ModalState
   setPlusModal: Dispatch<SetStateAction<ModalState>>
+  currentUserId: string
 }
 
 export function DashboardShell({
@@ -53,7 +56,10 @@ export function DashboardShell({
   onRemoveContact,
   plusModal,
   setPlusModal,
+  currentUserId,
 }: Props) {
+  const { pinnedMessages, isLoading } = useMsgStore()
+
   return (
     <div className="flex h-screen bg-[#0f0f14] text-white overflow-hidden select-none">
       
@@ -99,7 +105,7 @@ export function DashboardShell({
 
         <div className="flex-1 overflow-hidden relative flex flex-col">
           {activeTab === 'dms' && selectedContact && (
-            <ChatPanel activeRoom={{ id: selectedContact.contactUid, name: getContactDisplayName(selectedContact), icon: '👤' }} bottomRef={bottomRef} />
+            <ChatPanel activeRoom={{ id: [currentUserId, selectedContact.contactUid].sort().join('_'), name: getContactDisplayName(selectedContact), icon: '👤' }} bottomRef={bottomRef} />
           )}
           {activeTab === 'dms' && !selectedContact && (
             <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2">
@@ -111,10 +117,50 @@ export function DashboardShell({
             <ChatPanel activeRoom={activeRoom} bottomRef={bottomRef} />
           )}
           {activeTab === 'pinned' && (
-            <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2">
-              <span className="text-4xl">📌</span>
-              <p className="text-sm">Pesan yang Anda pin akan muncul di sini</p>
-            </div>
+            isLoading && pinnedMessages.length === 0 ? (
+              <div className="flex justify-center items-center h-full">
+                <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : pinnedMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2 select-none">
+                <span className="text-4xl">📌</span>
+                <p className="text-sm">Belum ada pesan tersemat</p>
+                <p className="text-xs text-zinc-500">Klik kanan pada potongan pesan untuk menyematkannya.</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                {pinnedMessages.map((msg) => {
+                  const isOwnMessage = msg.senderId === currentUserId
+                  const isRoom = msg.parentType === 'rooms'
+                  const room = isRoom ? rooms.find((r) => r.id === msg.parentId) : null
+                  const originLabel = isRoom
+                    ? `${room ? room.name : msg.parentId} · @${msg.senderName}`
+                    : `@${msg.senderName}`
+
+                  return (
+                    <div key={msg.id} className="flex flex-col gap-2">
+                      {/* Smart Header Origin */}
+                      <div className="flex items-center gap-1.5 text-xs text-violet-400/80 font-medium px-2">
+                        <span className="hover:underline cursor-default select-none">
+                          {originLabel}
+                        </span>
+                      </div>
+
+                      {/* Message Bubble Container with glassmorphic styling */}
+                      <div className="bg-[#15151f] rounded-2xl p-4 border border-white/[0.04] transition-all hover:bg-[#181825] hover:border-white/[0.08] shadow-lg">
+                        <MessageBubble
+                          roomId={msg.parentId!}
+                          message={msg}
+                          isOwnMessage={isOwnMessage}
+                          onRequestEdit={() => {}}
+                          onRequestDelete={() => {}}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
           )}
           {activeTab === 'ai' && <ChatbotPanel bottomRef={bottomRef} />}
         </div>
