@@ -16,9 +16,6 @@ type SubPanelProps = {
     contactsLoading: boolean
     selectedContactId: string | null
     onSelectContact: (contactUid: string) => void
-    onRenameContact: (contact: ContactWithProfile) => void
-    onRemoveContact: (contact: ContactWithProfile) => void
-    onContactPeer: (contact: ContactWithProfile) => void
     plusModal: ModalState
     setPlusModal: Dispatch<SetStateAction<ModalState>>
 }
@@ -32,9 +29,6 @@ export function DashboardSubPanel({
     contactsLoading,
     selectedContactId,
     onSelectContact,
-    onRenameContact,
-    onRemoveContact,
-    onContactPeer,
     plusModal,
     setPlusModal,
     }: SubPanelProps) {
@@ -80,9 +74,6 @@ export function DashboardSubPanel({
                 isSidebarOpen={true}
                 selectedContactId={selectedContactId}
                 onSelectContact={onSelectContact}
-                onRename={onRenameContact}
-                onContact={onContactPeer}
-                onRemove={onRemoveContact}
             />
             )}
 

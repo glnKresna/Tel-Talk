@@ -7,9 +7,6 @@ type Props = {
   isSidebarOpen: boolean
   selectedContactId: string | null
   onSelectContact: (contactUid: string) => void
-  onRename: (contact: ContactWithProfile) => void
-  onContact: (contact: ContactWithProfile) => void
-  onRemove: (contact: ContactWithProfile) => void
 }
 
 export function ContactSidebarList({
@@ -18,9 +15,6 @@ export function ContactSidebarList({
   isSidebarOpen,
   selectedContactId,
   onSelectContact,
-  onRename,
-  onContact,
-  onRemove,
 }: Props) {
   if (!isSidebarOpen) {
     return (
@@ -59,9 +53,6 @@ export function ContactSidebarList({
           contact={contact}
           isActive={selectedContactId === contact.contactUid}
           onSelect={() => onSelectContact(contact.contactUid)}
-          onRename={() => onRename(contact)}
-          onContact={() => onContact(contact)}
-          onRemove={() => onRemove(contact)}
         />
       ))}
     </nav>

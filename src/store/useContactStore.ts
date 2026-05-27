@@ -25,6 +25,8 @@ interface ContactStore {
   ) => Promise<void>
   updateCustomName: (ownerUid: string, contactUid: string, customName: string | null) => Promise<void>
   removeContact: (ownerUid: string, contactUid: string) => Promise<void>
+  toggleBlockContact: (ownerUid: string, contactUid: string, currentBlockedStatus: boolean) => Promise<void>
+  clearContactChat: (ownerUid: string, contactUid: string) => Promise<void>
   isContact: (contactUid: string) => boolean
 }
 
@@ -55,6 +57,8 @@ export const useContactStore = create<ContactStore>((set, get) => ({
               typeof data.customName === 'string' ? data.customName : null,
             savedAt: data.savedAt,
             addedVia: data.addedVia === 'name' ? 'name' : 'email',
+            isBlocked: typeof data.isBlocked === 'boolean' ? data.isBlocked : false,
+            clearedAt: data.clearedAt || null,
           }
         })
 
@@ -118,6 +122,18 @@ export const useContactStore = create<ContactStore>((set, get) => ({
 
   removeContact: async (ownerUid, contactUid) => {
     await deleteDoc(doc(db, 'users', ownerUid, 'contacts', contactUid))
+  },
+
+  toggleBlockContact: async (ownerUid, contactUid, currentBlockedStatus) => {
+    await updateDoc(doc(db, 'users', ownerUid, 'contacts', contactUid), {
+      isBlocked: !currentBlockedStatus,
+    })
+  },
+
+  clearContactChat: async (ownerUid, contactUid) => {
+    await updateDoc(doc(db, 'users', ownerUid, 'contacts', contactUid), {
+      clearedAt: serverTimestamp(),
+    })
   },
 
   isContact: (contactUid) => {

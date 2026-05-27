@@ -75,8 +75,7 @@ service cloud.firestore {
           );
 
         allow delete: if isSignedIn()
-          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants
-          && resource.data.senderId == request.auth.uid;
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
       }
     }
 

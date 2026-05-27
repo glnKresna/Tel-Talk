@@ -1,17 +1,32 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react'
+import { Search, X } from 'lucide-react'
 import { useMsgStore } from '../../../store/useMsgStore'
 import { useAuthStore } from '../../../store/useAuthStore'
 import { IconButton } from '../../UI/IconButton'
 import { AutoResizeTextarea } from '../../UI/AutoResizeTextarea'
 import type { FilePreviewState, Room } from '../../../types/dashboardTypes'
+import type { ContactWithProfile } from '../../../types/contactTypes'
 import { MessageList } from './MessageList'
 
 type Props = {
   activeRoom: Room
   bottomRef: RefObject<HTMLDivElement | null>
+  searchQuery?: string
+  setSearchQuery?: (q: string) => void
+  isSearchOpen?: boolean
+  setIsSearchOpen?: (open: boolean) => void
+  contact?: ContactWithProfile | null
 }
 
-export function ChatPanel({ activeRoom, bottomRef }: Props) {
+export function ChatPanel({
+  activeRoom,
+  bottomRef,
+  searchQuery = '',
+  setSearchQuery,
+  isSearchOpen = false,
+  setIsSearchOpen,
+  contact = null,
+}: Props) {
   const { messages, isLoading: msgLoading, error: msgError, kirimPesan, kirimLampiran, hapusPesan } =
     useMsgStore()
   const { currUser } = useAuthStore()
@@ -98,11 +113,49 @@ export function ChatPanel({ activeRoom, bottomRef }: Props) {
     await hapusPesan(activeRoom.id, deleteConfirmMessageId)
   }
 
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter((m) =>
+        m.isiPesan?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : messages
+
   return (
     <>
+      {isSearchOpen && (
+        <div className="px-6 py-2 bg-[#13131a]/30 border-b border-white/[0.04] flex items-center gap-3">
+          <Search size={16} className="text-zinc-500 shrink-0" />
+          <input
+            type="text"
+            placeholder="Cari pesan di obrolan ini..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery?.(e.target.value)}
+            className="flex-1 bg-transparent text-xs text-white placeholder:text-zinc-600 focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery?.('')}
+              className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchOpen?.(false)
+              setSearchQuery?.('')
+            }}
+            className="text-zinc-500 hover:text-white text-xs font-semibold transition-colors"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
       <MessageList
         activeRoom={activeRoom}
-        messages={messages}
+        messages={filteredMessages}
         msgLoading={msgLoading}
         msgError={msgError}
         bottomRef={bottomRef}
@@ -199,46 +252,55 @@ export function ChatPanel({ activeRoom, bottomRef }: Props) {
             </button>
           </div>
         )}
-        <div className="flex items-end gap-2 bg-[#1e1e2a] border border-white/[0.08] rounded-2xl px-4 py-3 focus-within:border-violet-500/40 transition-colors">
-          <IconButton
-            variant="ghost"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isSending || Boolean(editingMessageId)}
-            icon={
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-            }
-          />
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
-          <AutoResizeTextarea
-            value={inputText}
-            disabled={isSending}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              editingMessageId
-                ? 'Mengedit pesan...'
-                : filePreview
-                  ? 'Tambah caption (opsional)...'
-                  : 'Ketik pesan...'
-            }
-          />
-          <IconButton
-            variant="primary"
-            onClick={() => void handleSendText()}
-            disabled={isSending || (!inputText.trim() && !filePreview)}
-            icon={
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            }
-          />
-        </div>
-        <p className="text-[10px] text-zinc-600 mt-1.5 text-center">
-          Enter to send · Shift+Enter for newline
-        </p>
+        {contact?.isBlocked ? (
+          <div className="flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 rounded-2xl px-4 py-3.5 text-xs text-red-300 select-none">
+            <span>🔒</span>
+            <span>Anda telah memblokir kontak ini. Silakan buka blokir dari menu opsi kanan atas untuk mengirim pesan kembali.</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-end gap-2 bg-[#1e1e2a] border border-white/[0.08] rounded-2xl px-4 py-3 focus-within:border-violet-500/40 transition-colors">
+              <IconButton
+                variant="ghost"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSending || Boolean(editingMessageId)}
+                icon={
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                }
+              />
+              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+              <AutoResizeTextarea
+                value={inputText}
+                disabled={isSending}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  editingMessageId
+                    ? 'Mengedit pesan...'
+                    : filePreview
+                      ? 'Tambah caption (opsional)...'
+                      : 'Ketik pesan...'
+                }
+              />
+              <IconButton
+                variant="primary"
+                onClick={() => void handleSendText()}
+                disabled={isSending || (!inputText.trim() && !filePreview)}
+                icon={
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                }
+              />
+            </div>
+            <p className="text-[10px] text-zinc-600 mt-1.5 text-center">
+              Enter to send · Shift+Enter for newline
+            </p>
+          </>
+        )}
       </div>
     </>
   )

@@ -38,7 +38,7 @@ interface MsgStore {
   starredMessages: Pesan[]
   isLoading: boolean
   error: string | null
-  subscribeToRoom: (roomId: string) => () => void
+  subscribeToRoom: (roomId: string, clearedAt?: Timestamp | null) => () => void
   subscribeToStarredMessages: (userId: string) => () => void
   kirimPesan: (roomId: string, text: string, user: any) => Promise<void>
   kirimLampiran: (roomId: string, file: File, user: any, text?: string) => Promise<void>
@@ -53,7 +53,7 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
   isLoading: false,
   error: null,
 
-  subscribeToRoom: (roomId) => {
+  subscribeToRoom: (roomId, clearedAt) => {
     set({ messages: [], isLoading: true, error: null });
     
     const isDM = roomId.includes('_');
@@ -63,10 +63,19 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const liveMessages = snapshot.docs.map(doc => ({
+        let liveMessages = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as Pesan[];
+
+        if (isDM && clearedAt) {
+          const clearedAtMs = typeof clearedAt.toMillis === 'function' ? clearedAt.toMillis() : (clearedAt as any).seconds * 1000;
+          liveMessages = liveMessages.filter((msg) => {
+            if (!msg.waktuKirim) return true;
+            const waktuKirimMs = typeof msg.waktuKirim.toMillis === 'function' ? msg.waktuKirim.toMillis() : (msg.waktuKirim as any).seconds * 1000;
+            return waktuKirimMs > clearedAtMs;
+          });
+        }
 
         set({ messages: liveMessages, isLoading: false, error: null });
       },

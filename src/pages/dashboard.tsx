@@ -46,6 +46,8 @@ export default function Dashboard() {
     addContact,
     updateCustomName,
     removeContact,
+    toggleBlockContact,
+    clearContactChat,
     isContact,
   } = useContactStore()
 
@@ -83,10 +85,11 @@ export default function Dashboard() {
       return () => unsubscribe()
     } else if (activeTab === 'dms' && selectedContactId) {
       const conversationId = [currUser.uid, selectedContactId].sort().join('_')
-      const unsubscribe = subscribeToRoom(conversationId)
+      const clearedAt = selectedContact?.clearedAt || null
+      const unsubscribe = subscribeToRoom(conversationId, clearedAt)
       return () => unsubscribe()
     }
-  }, [activeTab, activeRoom.id, selectedContactId, currUser, subscribeToRoom])
+  }, [activeTab, activeRoom.id, selectedContactId, currUser, subscribeToRoom, selectedContact?.clearedAt])
 
   useEffect(() => {
     if (!currUser || activeTab !== 'dms' || !selectedContactId) return
@@ -149,12 +152,40 @@ export default function Dashboard() {
         selectedContactId={selectedContactId}
         selectedContact={selectedContact}
         onSelectContact={setSelectedContactId}
-        onContactUser={handleContactUser}
         onRenameContact={setRenameContact}
         onRemoveContact={(c) => void handleRemoveContact(c)}
         plusModal={plusModal}
         setPlusModal={setPlusModal}
         currentUserId={currUser.uid}
+        onViewContactProfile={() => {
+          if (selectedContact?.profile) {
+            setViewProfile(selectedContact.profile)
+          }
+        }}
+        onClearChat={async () => {
+          if (!selectedContactId) return
+          const confirmClear = window.confirm(
+            'Apakah Anda yakin ingin membersihkan riwayat obrolan ini?'
+          )
+          if (!confirmClear) return
+          await clearContactChat(currUser.uid, selectedContactId)
+          triggerToast('Riwayat chat berhasil dibersihkan.')
+        }}
+        onCloseChat={() => {
+          setSelectedContactId(null)
+        }}
+        onBlockContact={async () => {
+          if (!selectedContactId || !selectedContact) return
+          const isBlocked = selectedContact.isBlocked || false
+          const confirmBlock = window.confirm(
+            isBlocked
+              ? 'Apakah Anda ingin membuka blokir kontak ini?'
+              : 'Apakah Anda ingin memblokir kontak ini? Anda tidak akan dapat mengirim pesan kepada mereka.'
+          )
+          if (!confirmBlock) return
+          await toggleBlockContact(currUser.uid, selectedContactId, isBlocked)
+          triggerToast(isBlocked ? 'Kontak dibuka blokirnya.' : 'Kontak berhasil diblokir.')
+        }}
       />
 
       <OwnProfileModal

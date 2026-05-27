@@ -1,4 +1,5 @@
-import type { RefObject, Dispatch, SetStateAction } from 'react'
+import { useState, useRef, useEffect, type RefObject, type Dispatch, type SetStateAction } from 'react'
+import { MoreVertical } from 'lucide-react'
 import type { ActiveTab, Room, ModalState } from '../../../types/dashboardTypes'
 import type { ContactWithProfile } from '../../../types/contactTypes'
 import { getContactDisplayName } from '../../../types/contactTypes'
@@ -10,6 +11,7 @@ import { ChatPanel } from '../chat/ChatPanel'
 import { ChatbotPanel } from '../ai/ChatbotPanel'
 import MessageBubble from '../../messageBubble'
 import { useMsgStore } from '../../../store/useMsgStore'
+import { AvatarCircle } from '../../profile-page/avatarCircle'
 
 type Props = {
   activeTab: ActiveTab
@@ -27,12 +29,15 @@ type Props = {
   selectedContactId: string | null
   selectedContact: ContactWithProfile | null
   onSelectContact: (contactUid: string) => void
-  onContactUser: (uid: string) => Promise<void>
   onRenameContact: (contact: ContactWithProfile) => void
   onRemoveContact: (contact: ContactWithProfile) => void
   plusModal: ModalState
   setPlusModal: Dispatch<SetStateAction<ModalState>>
   currentUserId: string
+  onViewContactProfile?: () => void
+  onClearChat?: () => void
+  onCloseChat?: () => void
+  onBlockContact?: () => void
 }
 
 export function DashboardShell({
@@ -51,27 +56,47 @@ export function DashboardShell({
   selectedContactId,
   selectedContact,
   onSelectContact,
-  onContactUser,
   onRenameContact,
   onRemoveContact,
   plusModal,
   setPlusModal,
   currentUserId,
+  onViewContactProfile,
+  onClearChat,
+  onCloseChat,
+  onBlockContact,
 }: Props) {
   const { starredMessages, isLoading } = useMsgStore()
+  const [dmMenuOpen, setDmMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dmMenuOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setDmMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [dmMenuOpen])
 
   return (
     <div className="flex h-screen bg-[#0f0f14] text-white overflow-hidden select-none">
-      
-      <NavRail 
-        activeTab={activeTab} 
-        onTabChange={onTabChange} 
+
+      <NavRail
+        activeTab={activeTab}
+        onTabChange={onTabChange}
         profilePhotoURL={profilePhotoURL}
         profileDisplayName={profileDisplayName}
         onOpenProfile={onOpenProfile}
       />
 
-      <DashboardSubPanel 
+      <DashboardSubPanel
         activeTab={activeTab}
         rooms={rooms}
         activeRoomId={activeRoom.id}
@@ -80,18 +105,114 @@ export function DashboardShell({
         contactsLoading={contactsLoading}
         selectedContactId={selectedContactId}
         onSelectContact={onSelectContact}
-        onRenameContact={onRenameContact}
-        onRemoveContact={onRemoveContact}
-        onContactPeer={(contact) => onContactUser(contact.contactUid)}
         plusModal={plusModal}
         setPlusModal={setPlusModal}
       />
 
       <main className="flex-1 flex flex-col min-w-0 bg-[#0c0c10]">
-        <header className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.06] bg-[#13131a]/50 backdrop-blur-sm h-[65px]">
+        <header className="relative z-20 flex items-center gap-3 px-6 py-4 border-b border-white/[0.06] bg-[#13131a]/50 backdrop-blur-sm h-[65px]">
           {activeTab === 'dms' && (
-            <div className="text-sm font-medium text-white/80">
-              {selectedContact ? `Chat dengan ${getContactDisplayName(selectedContact)}` : 'Pilih Kontak'}
+            <div className="flex-1 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {selectedContact && (
+                  <AvatarCircle
+                    photoURL={selectedContact.profile?.photoURL ?? null}
+                    displayName={getContactDisplayName(selectedContact).replace(/^@/, '')}
+                    size="xs"
+                    variant="dashboard"
+                  />
+                )}
+                <span className="text-sm font-semibold text-white">
+                  {selectedContact ? getContactDisplayName(selectedContact).replace(/^@/, '') : 'Pilih Kontak'}
+                </span>
+              </div>
+
+              {selectedContact && (
+                <div className="relative" ref={menuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setDmMenuOpen((v) => !v)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors"
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+
+                  {dmMenuOpen && (
+                    <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-[#13131a] border border-white/[0.08] shadow-2xl overflow-hidden py-1 z-50">
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200"
+                        onClick={() => {
+                          setDmMenuOpen(false)
+                          onViewContactProfile?.()
+                        }}
+                      >
+                        Info Pengguna
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200"
+                        onClick={() => {
+                          setDmMenuOpen(false)
+                          onRenameContact(selectedContact)
+                        }}
+                      >
+                        Ubah Nama
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200"
+                        onClick={() => {
+                          setDmMenuOpen(false)
+                          setIsSearchOpen((v) => !v)
+                        }}
+                      >
+                        Cari
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200"
+                        onClick={() => {
+                          setDmMenuOpen(false)
+                          onClearChat?.()
+                        }}
+                      >
+                        Bersihkan Chat
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200"
+                        onClick={() => {
+                          setDmMenuOpen(false)
+                          onCloseChat?.()
+                        }}
+                      >
+                        Tutup Chat
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200 border-t border-white/[0.04]"
+                        onClick={() => {
+                          setDmMenuOpen(false)
+                          onBlockContact?.()
+                        }}
+                      >
+                        {selectedContact.isBlocked ? 'Buka Blokir Kontak' : 'Blokir Kontak'}
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-500/10 text-left text-xs text-red-300"
+                        onClick={() => {
+                          setDmMenuOpen(false)
+                          onRemoveContact(selectedContact)
+                        }}
+                      >
+                        Hapus Kontak
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {activeTab === 'rooms' && (
@@ -105,7 +226,15 @@ export function DashboardShell({
 
         <div className="flex-1 overflow-hidden relative flex flex-col">
           {activeTab === 'dms' && selectedContact && (
-            <ChatPanel activeRoom={{ id: [currentUserId, selectedContact.contactUid].sort().join('_'), name: getContactDisplayName(selectedContact), icon: '👤' }} bottomRef={bottomRef} />
+            <ChatPanel
+              activeRoom={{ id: [currentUserId, selectedContact.contactUid].sort().join('_'), name: getContactDisplayName(selectedContact).replace(/^@/, ''), icon: '👤' }}
+              bottomRef={bottomRef}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              isSearchOpen={isSearchOpen}
+              setIsSearchOpen={setIsSearchOpen}
+              contact={selectedContact}
+            />
           )}
           {activeTab === 'dms' && !selectedContact && (
             <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2">
@@ -152,8 +281,8 @@ export function DashboardShell({
                           roomId={msg.parentId!}
                           message={msg}
                           isOwnMessage={isOwnMessage}
-                          onRequestEdit={() => {}}
-                          onRequestDelete={() => {}}
+                          onRequestEdit={() => { }}
+                          onRequestDelete={() => { }}
                         />
                       </div>
                     </div>

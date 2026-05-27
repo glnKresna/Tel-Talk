@@ -132,7 +132,7 @@ export default function MessageBubble({
       <div
         className={`flex items-end gap-2 mb-3 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}
       >
-        {!isOwnMessage && (
+        {!isOwnMessage && !roomId.includes('_') && (
           <div className="w-7 h-7 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mb-1">
             <span className="text-[10px] font-bold text-violet-300">
               {senderName?.[0]?.toUpperCase() ?? '?'}
@@ -141,7 +141,7 @@ export default function MessageBubble({
         )}
 
         <div className={`flex flex-col gap-1 max-w-[72%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-          {!isOwnMessage && (
+          {!isOwnMessage && !roomId.includes('_') && (
             <span className="text-[10px] text-zinc-500 px-1">{senderName}</span>
           )}
 

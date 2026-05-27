@@ -15,6 +15,8 @@ export interface Contact {
   customName: string | null
   savedAt: Timestamp
   addedVia: ContactAddedVia
+  isBlocked?: boolean
+  clearedAt?: Timestamp | null
 }
 
 export interface ContactWithProfile extends Contact {
