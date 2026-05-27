@@ -1,0 +1,41 @@
+import type { ContactWithProfile } from './contactTypes'
+
+export type ActiveTab = 'dms' | 'rooms' | 'pinned' | 'ai'
+
+export interface Room {
+  id: string
+  name: string
+  icon: string
+}
+
+export interface FilePreviewState {
+  file: File
+  previewUrl: string | null
+}
+
+export type ChatbotMsg = {
+  role: 'user' | 'model'
+  content: string
+}
+
+export interface ModalState {
+  isOpen: boolean
+  type: 'add_contact' | 'create_room' | null
+}
+
+export interface DashboardSubPanelProps {
+  activeTab: ActiveTab
+  searchVal: string
+  setSearchVal: (val: string) => void
+  
+  // Props daftar kontak
+  contactLoading: boolean
+  contacts: ContactWithProfile[]
+  activeContactId: string | null
+  onSelectContact: (uid: string) => void
+  
+  // Props daftar room
+  rooms: Room[]
+  activeRoomId: string
+  onSelectRoom: (room: Room) => void
+}

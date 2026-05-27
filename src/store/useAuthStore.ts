@@ -12,7 +12,7 @@ interface AuthState {
     isLoading: boolean;
     error: string | null;
 
-    cekAuthState: () => void;
+    cekAuthState: () => () => void;
     cekEmailTerdaftar: (email: string) => Promise<any>;
     registerUser: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
     resendVerifikasi: () => Promise<void>;
@@ -29,13 +29,14 @@ export const useAuthStore = create<AuthState> ((set) => ({
 
     cekAuthState: () => {
         set({ isLoading: true });
-        onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 set({currUser: user, isLoading: false, error: null});
             } else {
                 set({currUser: null, isLoading: false, error: null});
             }
         });
+        return unsubscribe;
     },
 
     cekEmailTerdaftar: async(email) => {
@@ -72,12 +73,21 @@ export const useAuthStore = create<AuthState> ((set) => ({
             // };
             await sendEmailVerification(user);
 
+            const username = email.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '') || 'user';
             await setDoc(doc(db, "users", user.uid), {
                 userID: user.uid,
                 email: user.email,
-                nama: email.split('@')[0],
+                username,
                 status: true,
                 emailVerified: false
+            });
+
+            await syncDiscoverabilityProfile({
+                uid: user.uid,
+                email: user.email,
+                username,
+                photoURL: null,
+                bio: '',
             });
 
             set({currUser: userCredential.user, isLoading: false, error: null});

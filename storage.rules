@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Avatar uploads: hanya pemilik yang boleh upload ke prefix uid-nya.
+    match /avatars/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && fileName.matches('^' + request.auth.uid + '_.*')
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Chat attachments: permissive untuk sekarang (sesuaikan sesuai kebutuhan room membership).
+    match /chat-rooms/{roomId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+  }
+}
+

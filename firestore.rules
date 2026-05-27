@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /publicProfiles/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    match /userLookup/{emailId} {
+      allow get: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+      allow list: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['nama', 'bio', 'photoURL', 'emailVerified'])
+        && request.resource.data.userID == resource.data.userID;
+
+      allow create: if isOwner(userId);
+      allow delete: if false;
+
+      match /contacts/{contactId} {
+        allow read, write: if isOwner(userId)
+          && contactId != userId
+          && (request.method != 'create' || request.resource.data.contactUid == contactId);
+      }
+    }
+
+    match /conversations/{convId} {
+      allow read: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participants.size() == 2;
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
+        allow create: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants
+          && request.resource.data.senderId == request.auth.uid;
+      }
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+
+        allow create: if isSignedIn()
+          && request.resource.data.senderId == request.auth.uid;
+
+        allow update: if isSignedIn()
+          && (
+            (resource.data.senderId == request.auth.uid
+              && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isiPesan', 'editedAt']))
+            || request.resource.data.diff(resource.data).changedKeys().hasOnly(['isPinned'])
+          );
+
+        allow delete: if isSignedIn()
+          && resource.data.senderId == request.auth.uid;
+      }
+    }
+  }
+}
