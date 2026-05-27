@@ -37,9 +37,10 @@ service cloud.firestore {
       allow delete: if false;
 
       match /contacts/{contactId} {
-        allow read, write: if isOwner(userId)
+        allow read, update, delete: if isOwner(userId);
+        allow create: if isOwner(userId)
           && contactId != userId
-          && (request.method != 'create' || request.resource.data.contactUid == contactId);
+          && request.resource.data.contactUid == contactId;
       }
 
       match /starredMessages/{starId} {
