@@ -8,6 +8,8 @@ export interface PublicProfile {
   photoURL: string | null
   bio: string
   updatedAt?: Timestamp
+  isOnline?: boolean
+  lastSeen?: Timestamp | null
 }
 
 export interface Contact {

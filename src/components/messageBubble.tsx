@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
-import { Download, ExternalLink, Star, X } from 'lucide-react'
+import { Download, ExternalLink, Star, X, CornerUpLeft } from 'lucide-react'
 import { Edit3, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import type { Pesan } from '../store/useMsgStore'
@@ -13,6 +13,9 @@ type Props = {
   isOwnMessage: boolean
   onRequestEdit: (messageId: string, currentText: string) => void
   onRequestDelete: (messageId: string) => void
+  isHighlighted?: boolean
+  searchQuery?: string
+  onRequestReply?: (message: Pesan) => void
 }
 
 export default function MessageBubble({
@@ -21,6 +24,9 @@ export default function MessageBubble({
   isOwnMessage,
   onRequestEdit,
   onRequestDelete,
+  isHighlighted = false,
+  searchQuery = '',
+  onRequestReply,
 }: Props) {
   const { isiPesan, senderName, waktuKirim, fileUrl, fileName, fileType } = message
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -38,6 +44,18 @@ export default function MessageBubble({
   const isImage = fileType?.startsWith('image/')
   const isVideo = fileType?.startsWith('video/')
   const isAudio = fileType?.startsWith('audio/')
+
+  const handleScrollToOriginal = () => {
+    if (!message.replyToId) return
+    const el = document.getElementById(`msg-${message.replyToId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('ring-4', 'ring-violet-500/50')
+      setTimeout(() => {
+        el.classList.remove('ring-4', 'ring-violet-500/50')
+      }, 1000)
+    }
+  }
 
   const prettyFileName = useMemo(() => {
     if (!fileName) return 'File'
@@ -146,13 +164,41 @@ export default function MessageBubble({
           )}
 
           <div
-            className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-md select-text
+            id={`msg-${message.id}`}
+            className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-md select-text transition-all duration-300
               ${isOwnMessage
                 ? 'bg-violet-600 text-white rounded-br-sm'
                 : 'bg-[#1e1e2a] border border-white/[0.06] text-zinc-200 rounded-bl-sm'
+              }
+              ${isHighlighted
+                ? 'ring-2 ring-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.35)] scale-[1.01]'
+                : ''
               }`}
             onContextMenu={openContextMenu}
           >
+            {message.replyToMsg && (
+              <div
+                onClick={handleScrollToOriginal}
+                className={`mb-2 p-2 rounded-lg border-l-4 text-xs cursor-pointer select-none transition-all hover:bg-white/[0.06] text-left
+                  ${isOwnMessage
+                    ? 'bg-black/15 border-white/40 text-violet-200'
+                    : 'bg-white/5 border-violet-500 text-zinc-400'
+                  }`}
+              >
+                <div className="font-semibold text-white truncate">
+                  {message.replyToMsg.senderName}
+                </div>
+                <div className="truncate mt-0.5 max-w-[240px]">
+                  {message.replyToMsg.fileUrl ? (
+                    <span className="flex items-center gap-1 text-[10px]">
+                      📁 {message.replyToMsg.fileType?.startsWith('image/') ? 'Foto' : message.replyToMsg.fileType?.startsWith('video/') ? 'Video' : 'File'}
+                    </span>
+                  ) : (
+                    message.replyToMsg.isiPesan
+                  )}
+                </div>
+              </div>
+            )}
             {fileUrl && (
               <div className="mb-2">
                 {isImage && (
@@ -227,7 +273,11 @@ export default function MessageBubble({
               </div>
             )}
 
-            {isiPesan && <p className="break-words">{isiPesan}</p>}
+            {isiPesan && (
+              <p className="break-words">
+                {searchQuery ? renderHighlightedText(isiPesan, searchQuery) : isiPesan}
+              </p>
+            )}
 
             <span
               className={`block text-right text-[10px] mt-1 select-none
@@ -248,6 +298,18 @@ export default function MessageBubble({
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="w-[200px] rounded-xl bg-[#13131a] border border-white/[0.08] shadow-2xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setMenu((m) => ({ ...m, open: false }))
+                onRequestReply?.(message)
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06] transition-colors border-b border-white/[0.04]"
+            >
+              <CornerUpLeft size={16} className="text-zinc-300" />
+              <span>Balas</span>
+            </button>
+
             <button
               type="button"
               onClick={() => void onStarClick()}
@@ -349,6 +411,24 @@ export default function MessageBubble({
             </div>
           </div>
         </div>
+      )}
+    </>
+  )
+}
+
+const renderHighlightedText = (text: string, query: string) => {
+  if (!query.trim()) return text
+  const parts = text.split(new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'))
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <span key={i} className="bg-yellow-500/35 text-yellow-200 font-bold px-0.5 rounded">
+            {part}
+          </span>
+        ) : (
+          part
+        )
       )}
     </>
   )

@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import { useEffect, useMemo, type RefObject } from 'react'
 import MessageBubble from '../../messageBubble'
 import type { Pesan } from '../../../store/useMsgStore'
 import type { Room } from '../../../types/dashboardTypes'
@@ -12,6 +12,8 @@ type Props = {
   currentUserId?: string
   onRequestEdit: (messageId: string, currentText: string) => void
   onRequestDelete: (messageId: string) => void
+  searchQuery?: string
+  onRequestReply?: (message: Pesan) => void
 }
 
 export function MessageList({
@@ -23,7 +25,28 @@ export function MessageList({
   currentUserId,
   onRequestEdit,
   onRequestDelete,
+  searchQuery = '',
+  onRequestReply,
 }: Props) {
+  const matchingMessages = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    return messages.filter((m) =>
+      m.isiPesan?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [messages, searchQuery])
+
+  useEffect(() => {
+    if (searchQuery.trim() && matchingMessages.length > 0) {
+      const newestMatch = matchingMessages[matchingMessages.length - 1]
+      if (newestMatch?.id) {
+        const el = document.getElementById(`msg-${newestMatch.id}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+    }
+  }, [searchQuery, matchingMessages])
+
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1">
       {msgLoading && messages.length === 0 && (
@@ -47,16 +70,25 @@ export function MessageList({
         </div>
       )}
 
-      {messages.map((msg) => (
-        <MessageBubble
-          key={msg.id}
-          roomId={activeRoom.id}
-          message={msg}
-          isOwnMessage={msg.senderId === currentUserId}
-          onRequestEdit={onRequestEdit}
-          onRequestDelete={onRequestDelete}
-        />
-      ))}
+      {messages.map((msg) => {
+        const isMatch = Boolean(
+          searchQuery.trim() &&
+            msg.isiPesan?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        return (
+          <MessageBubble
+            key={msg.id}
+            roomId={activeRoom.id}
+            message={msg}
+            isOwnMessage={msg.senderId === currentUserId}
+            isHighlighted={isMatch}
+            searchQuery={searchQuery}
+            onRequestEdit={onRequestEdit}
+            onRequestDelete={onRequestDelete}
+            onRequestReply={onRequestReply}
+          />
+        )
+      })}
       <div ref={bottomRef} />
     </div>
   )

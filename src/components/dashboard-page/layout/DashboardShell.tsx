@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, type RefObject, type Dispatch, type SetStateAction } from 'react'
 import { MoreVertical } from 'lucide-react'
 import type { ActiveTab, Room, ModalState } from '../../../types/dashboardTypes'
-import type { ContactWithProfile } from '../../../types/contactTypes'
+import type { ContactWithProfile, PublicProfile } from '../../../types/contactTypes'
 import { getContactDisplayName } from '../../../types/contactTypes'
+import { format } from 'date-fns'
+import { id } from 'date-fns/locale'
 import { NavRail } from './NavRail'
 import { DashboardSubPanel } from './DashboardSubPanel'
 import { ChatHeader } from '../chat/ChatHeader'
@@ -38,6 +40,7 @@ type Props = {
   onClearChat?: () => void
   onCloseChat?: () => void
   onBlockContact?: () => void
+  activeProfile?: PublicProfile | null
 }
 
 export function DashboardShell({
@@ -65,6 +68,7 @@ export function DashboardShell({
   onClearChat,
   onCloseChat,
   onBlockContact,
+  activeProfile,
 }: Props) {
   const { starredMessages, isLoading } = useMsgStore()
   const [dmMenuOpen, setDmMenuOpen] = useState(false)
@@ -116,15 +120,26 @@ export function DashboardShell({
               <div className="flex items-center gap-3">
                 {selectedContact && (
                   <AvatarCircle
-                    photoURL={selectedContact.profile?.photoURL ?? null}
+                    photoURL={activeProfile?.photoURL ?? selectedContact.profile?.photoURL ?? null}
                     displayName={getContactDisplayName(selectedContact).replace(/^@/, '')}
                     size="xs"
                     variant="dashboard"
                   />
                 )}
-                <span className="text-sm font-semibold text-white">
-                  {selectedContact ? getContactDisplayName(selectedContact).replace(/^@/, '') : 'Pilih Kontak'}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-white leading-tight">
+                    {selectedContact ? getContactDisplayName(selectedContact).replace(/^@/, '') : 'Pilih Kontak'}
+                  </span>
+                  {selectedContact && (
+                    <span className="text-[10px] text-zinc-500 font-medium mt-0.5">
+                      {activeProfile?.isOnline
+                        ? '🟢 Online'
+                        : activeProfile?.lastSeen
+                        ? `Terakhir dilihat ${formatLastSeen(activeProfile.lastSeen)}`
+                        : 'Offline'}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {selectedContact && (
@@ -296,4 +311,37 @@ export function DashboardShell({
       </main>
     </div>
   )
+}
+
+function formatLastSeen(timestamp: any): string {
+  if (!timestamp) return 'Offline'
+  try {
+    const date = typeof timestamp.toDate === 'function' ? timestamp.toDate() : new Date(timestamp.seconds * 1000)
+    const now = new Date()
+    
+    // Check if today
+    const isToday = date.getDate() === now.getDate() &&
+                    date.getMonth() === now.getMonth() &&
+                    date.getFullYear() === now.getFullYear()
+                    
+    if (isToday) {
+      return `hari ini pukul ${format(date, 'HH:mm', { locale: id })}`
+    }
+    
+    // Check if yesterday
+    const yesterday = new Date(now)
+    yesterday.setDate(now.getDate() - 1)
+    const isYesterday = date.getDate() === yesterday.getDate() &&
+                        date.getMonth() === yesterday.getMonth() &&
+                        date.getFullYear() === yesterday.getFullYear()
+                        
+    if (isYesterday) {
+      return `kemarin pukul ${format(date, 'HH:mm', { locale: id })}`
+    }
+    
+    return format(date, 'd MMMM yyyy pukul HH:mm', { locale: id })
+  } catch (err) {
+    console.error('Error formatting last seen:', err)
+    return 'Offline'
+  }
 }

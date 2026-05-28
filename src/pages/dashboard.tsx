@@ -14,6 +14,24 @@ import { ensureDiscoverabilityProfile } from '../lib/syncPublicProfile'
 import { ensureConversation } from '../lib/conversations'
 import type { ActiveTab, Room, ModalState } from '../types/dashboardTypes'
 import type { ContactAddedVia, ContactWithProfile, PublicProfile } from '../types/contactTypes'
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
+import { db } from '../config/firebase'
+
+const updateUserPresence = async (uid: string, online: boolean) => {
+  try {
+    const userRef = doc(db, 'publicProfiles', uid)
+    await setDoc(
+      userRef,
+      {
+        isOnline: online,
+        lastSeen: online ? null : serverTimestamp(),
+      },
+      { merge: true }
+    )
+  } catch (err) {
+    console.error('Error updating presence:', err)
+  }
+}
 
 const ROOMS: Room[] = [
   { id: 'general', name: 'General', icon: '💬' },
@@ -33,6 +51,7 @@ export default function Dashboard() {
   
   // State Baru untuk mengontrol Floating Window opsi '+'
   const [plusModal, setPlusModal] = useState<ModalState>({ isOpen: false, type: null })
+  const [activeProfile, setActiveProfile] = useState<PublicProfile | null>(null)
   
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -102,6 +121,67 @@ export default function Dashboard() {
     return () => unsubscribe()
   }, [currUser, subscribeToStarredMessages])
 
+  // 1. Mengelola Status Online/Offline User Aktif
+  useEffect(() => {
+    if (!currUser) return
+
+    // Set online saat aplikasi aktif/dimuat
+    void updateUserPresence(currUser.uid, true)
+
+    const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState === 'visible'
+      void updateUserPresence(currUser.uid, isVisible)
+    }
+
+    const handleBeforeUnload = () => {
+      void updateUserPresence(currUser.uid, false)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Set offline saat unmount/logout
+      void updateUserPresence(currUser.uid, false)
+    }
+  }, [currUser])
+
+  // 2. Berlangganan Real-Time Status Online/Offline Kontak yang Sedang Dipilih
+  useEffect(() => {
+    if (!currUser || !selectedContactId) {
+      setActiveProfile(null)
+      return
+    }
+
+    const docRef = doc(db, 'publicProfiles', selectedContactId)
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          setActiveProfile({
+            uid: docSnap.id,
+            username: data.username || 'user',
+            photoURL: data.photoURL || null,
+            bio: data.bio || '',
+            isOnline: typeof data.isOnline === 'boolean' ? data.isOnline : false,
+            lastSeen: data.lastSeen || null,
+          } as PublicProfile)
+        } else {
+          setActiveProfile(null)
+        }
+      },
+      (err) => {
+        console.error('Error loading selected contact presence:', err)
+        setActiveProfile(null)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [currUser, selectedContactId])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, aiMessages])
@@ -151,6 +231,7 @@ export default function Dashboard() {
         contactsLoading={contactsLoading}
         selectedContactId={selectedContactId}
         selectedContact={selectedContact}
+        activeProfile={activeProfile}
         onSelectContact={setSelectedContactId}
         onRenameContact={setRenameContact}
         onRemoveContact={(c) => void handleRemoveContact(c)}

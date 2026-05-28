@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react'
 import { Search, X } from 'lucide-react'
-import { useMsgStore } from '../../../store/useMsgStore'
+import { useMsgStore, type Pesan } from '../../../store/useMsgStore'
 import { useAuthStore } from '../../../store/useAuthStore'
 import { IconButton } from '../../UI/IconButton'
 import { AutoResizeTextarea } from '../../UI/AutoResizeTextarea'
@@ -33,6 +33,7 @@ export function ChatPanel({
 
   const [inputText, setInputText] = useState('')
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [replyingMessage, setReplyingMessage] = useState<Pesan | null>(null)
   const [deleteConfirmMessageId, setDeleteConfirmMessageId] = useState<string | null>(null)
   const [filePreview, setFilePreview] = useState<FilePreviewState | null>(null)
   const [isSending, setIsSending] = useState(false)
@@ -45,6 +46,7 @@ export function ChatPanel({
     setInputText('')
     setDeleteConfirmMessageId(null)
     setSendError(null)
+    setReplyingMessage(null)
     handleClearFilePreview()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRoom.id])
@@ -77,6 +79,7 @@ export function ChatPanel({
     const trimmedText = inputText.trim()
     const pendingFile = filePreview?.file ?? null
     const pendingEditId = editingMessageId
+    const pendingReply = replyingMessage
 
     setSendError(null)
 
@@ -84,13 +87,14 @@ export function ChatPanel({
       if (pendingEditId) {
         await useMsgStore.getState().editPesan(activeRoom.id, pendingEditId, trimmedText)
       } else if (pendingFile) {
-        await kirimLampiran(activeRoom.id, pendingFile, currUser, trimmedText)
+        await kirimLampiran(activeRoom.id, pendingFile, currUser, trimmedText, pendingReply)
       } else {
-        await kirimPesan(activeRoom.id, trimmedText, currUser)
+        await kirimPesan(activeRoom.id, trimmedText, currUser, pendingReply)
       }
 
       setInputText('')
       setEditingMessageId(null)
+      setReplyingMessage(null)
       if (filePreview) handleClearFilePreview()
     } catch {
       setSendError('Gagal mengirim pesan. Coba lagi.')
@@ -112,12 +116,6 @@ export function ChatPanel({
     setDeleteConfirmMessageId(null)
     await hapusPesan(activeRoom.id, deleteConfirmMessageId)
   }
-
-  const filteredMessages = searchQuery.trim()
-    ? messages.filter((m) =>
-        m.isiPesan?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : messages
 
   return (
     <>
@@ -155,7 +153,8 @@ export function ChatPanel({
 
       <MessageList
         activeRoom={activeRoom}
-        messages={filteredMessages}
+        messages={messages}
+        searchQuery={searchQuery}
         msgLoading={msgLoading}
         msgError={msgError}
         bottomRef={bottomRef}
@@ -168,6 +167,11 @@ export function ChatPanel({
         onRequestDelete={(messageId) => {
           if (isSendingRef.current) return
           setDeleteConfirmMessageId(messageId)
+        }}
+        onRequestReply={(message) => {
+          if (isSendingRef.current) return
+          setEditingMessageId(null)
+          setReplyingMessage(message)
         }}
       />
 
@@ -236,6 +240,32 @@ export function ChatPanel({
             {sendError}
           </p>
         )}
+        {replyingMessage && (
+          <div className="mb-2 flex items-center justify-between bg-[#1e1e2a] border border-white/[0.08] rounded-xl p-2.5 px-3">
+            <div className="flex-1 min-w-0 border-l-2 border-violet-500 pl-2">
+              <span className="text-[10px] font-semibold text-violet-400 block">
+                Membalas ke {replyingMessage.senderName}
+              </span>
+              <span className="text-xs text-zinc-400 truncate block max-w-[400px]">
+                {replyingMessage.fileUrl ? (
+                  <span className="flex items-center gap-1 text-[10px]">
+                    📁 {replyingMessage.fileType?.startsWith('image/') ? 'Foto' : replyingMessage.fileType?.startsWith('video/') ? 'Video' : 'File'}
+                  </span>
+                ) : (
+                  replyingMessage.isiPesan
+                )}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="text-zinc-500 hover:text-red-400 text-xs font-semibold transition-colors pl-3 shrink-0"
+              onClick={() => setReplyingMessage(null)}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {editingMessageId && (
           <div className="mb-2 flex items-center justify-between text-xs text-zinc-400 px-1">
             <span>Mengedit pesan</span>

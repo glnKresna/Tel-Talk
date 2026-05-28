@@ -31,6 +31,15 @@ export interface Pesan {
   parentId?: string
   parentType?: 'rooms' | 'conversations'
   starredAt?: Timestamp | null
+
+  // Reply fields
+  replyToId?: string | null
+  replyToMsg?: {
+    senderName: string
+    isiPesan: string
+    fileUrl?: string | null
+    fileType?: string | null
+  } | null
 }
 
 interface MsgStore {
@@ -40,8 +49,8 @@ interface MsgStore {
   error: string | null
   subscribeToRoom: (roomId: string, clearedAt?: Timestamp | null) => () => void
   subscribeToStarredMessages: (userId: string) => () => void
-  kirimPesan: (roomId: string, text: string, user: any) => Promise<void>
-  kirimLampiran: (roomId: string, file: File, user: any, text?: string) => Promise<void>
+  kirimPesan: (roomId: string, text: string, user: any, replyTo?: Pesan | null) => Promise<void>
+  kirimLampiran: (roomId: string, file: File, user: any, text?: string, replyTo?: Pesan | null) => Promise<void>
   toggleStar: (userId: string, roomId: string, message: Pesan, parentType: 'rooms' | 'conversations') => Promise<void>
   editPesan: (roomId: string, messageId: string, nextText: string) => Promise<void>
   hapusPesan: (roomId: string, messageId: string) => Promise<void>
@@ -122,26 +131,38 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
     return unsubscribe;
   },
 
-  kirimPesan: async (roomId, text, user) => {
+  kirimPesan: async (roomId, text, user, replyTo = null) => {
     try {
       const isDM = roomId.includes('_');
       const messagesRef = collection(db, isDM ? 'conversations' : 'rooms', roomId, "messages");
       const senderName = (user.displayName || user.email?.split('@')[0]) ?? 'User';
       
-      await addDoc(messagesRef, {
+      const payload: any = {
         isiPesan: text,
         senderId: user.uid,
         senderName,
         waktuKirim: serverTimestamp(),
         statusBaca: false
-      });
+      };
+
+      if (replyTo) {
+        payload.replyToId = replyTo.id || null;
+        payload.replyToMsg = {
+          senderName: replyTo.senderName || 'User',
+          isiPesan: replyTo.isiPesan || '',
+          fileUrl: replyTo.fileUrl || null,
+          fileType: replyTo.fileType || null,
+        };
+      }
+      
+      await addDoc(messagesRef, payload);
     } catch (error) {
       console.error("Error sending message:", error);
       throw error;
     }
   },
 
-  kirimLampiran: async (roomId, file, user, text = "") => {
+  kirimLampiran: async (roomId, file, user, text = "", replyTo = null) => {
     try {
       const { url: downloadUrl } = await uploadFileToCloudinary({
         file,
@@ -152,7 +173,8 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
       const isDM = roomId.includes('_');
       const messagesRef = collection(db, isDM ? 'conversations' : 'rooms', roomId, "messages");
       const senderName = (user.displayName || user.email?.split('@')[0]) ?? 'User';
-      await addDoc(messagesRef, {
+      
+      const payload: any = {
         isiPesan: text,
         senderId: user.uid,
         senderName,
@@ -161,7 +183,19 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
         fileUrl: downloadUrl,
         fileName: file.name,
         fileType: file.type
-      });
+      };
+
+      if (replyTo) {
+        payload.replyToId = replyTo.id || null;
+        payload.replyToMsg = {
+          senderName: replyTo.senderName || 'User',
+          isiPesan: replyTo.isiPesan || '',
+          fileUrl: replyTo.fileUrl || null,
+          fileType: replyTo.fileType || null,
+        };
+      }
+
+      await addDoc(messagesRef, payload);
     } catch (error) {
       console.error("Error uploading file:", error);
       throw error;
