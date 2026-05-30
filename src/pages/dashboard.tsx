@@ -8,6 +8,8 @@ import { OwnProfileModal } from '../components/dashboard-page/profile/OwnProfile
 import { UserProfileModal } from '../components/dashboard-page/profile/UserProfileModal'
 import { EditContactNameModal } from '../components/dashboard-page/contacts/EditContactNameModal'
 import { AddContactModal } from '../components/dashboard-page/contacts/AddContactModal'
+import { CreateRoomModal } from '../components/dashboard-page/chat/CreateRoomModal'
+import { useRoomStore } from '../store/useRoomStore'
 import { useOwnProfile } from '../components/dashboard-page/profile/useOwnProfile'
 import { ProfileToast } from '../components/dashboard-page/ProfileToast'
 import { ensureDiscoverabilityProfile } from '../lib/syncPublicProfile'
@@ -33,16 +35,30 @@ const updateUserPresence = async (uid: string, online: boolean) => {
   }
 }
 
-const ROOMS: Room[] = [
-  { id: 'general', name: 'General', icon: '💬' },
-  { id: 'random', name: 'Random', icon: '🎲' },
-  { id: 'dev', name: 'Dev Talk', icon: '💻' },
-]
-
 export default function Dashboard() {
   // Mengubah default tab ke 'dms' sesuai UI baru
   const [activeTab, setActiveTab] = useState<ActiveTab>('dms')
-  const [activeRoom, setActiveRoom] = useState<Room>(ROOMS[0])
+
+  const { rooms, subscribeRooms, createRoom } = useRoomStore()
+  const [activeRoomState, setActiveRoomState] = useState<Room | null>(null)
+
+  const displayRooms = useMemo(() => {
+    if (rooms.length > 0) return rooms
+    return [
+      { id: 'general', name: 'General', icon: '💬', photoURL: null },
+      { id: 'random', name: 'Random', icon: '🎲', photoURL: null },
+      { id: 'dev', name: 'Dev Talk', icon: '💻', photoURL: null },
+    ]
+  }, [rooms])
+
+  const activeRoom = useMemo(() => {
+    if (activeRoomState) {
+      const found = displayRooms.find(r => r.id === activeRoomState.id)
+      if (found) return found
+    }
+    return displayRooms[0]
+  }, [activeRoomState, displayRooms])
+
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const [viewProfile, setViewProfile] = useState<PublicProfile | null>(null)
@@ -96,6 +112,11 @@ export default function Dashboard() {
     if (!currUser) return
     return subscribeContacts(currUser.uid)
   }, [currUser, subscribeContacts])
+
+  useEffect(() => {
+    if (!currUser) return
+    return subscribeRooms()
+  }, [currUser, subscribeRooms])
 
   useEffect(() => {
     if (!currUser) return
@@ -212,6 +233,18 @@ export default function Dashboard() {
     }
   }
 
+  const handleCreateRoom = async (name: string, photoURL: string | null) => {
+    if (!currUser) return
+    try {
+      const newRoomId = await createRoom(name, photoURL, currUser.uid)
+      setActiveRoomState({ id: newRoomId, name, icon: '💬', photoURL })
+      setActiveTab('rooms')
+      triggerToast(`Room "${name}" berhasil dibuat!`)
+    } catch {
+      triggerToast('Gagal membuat room.')
+    }
+  }
+
   if (!currUser) return null
 
   return (
@@ -219,9 +252,9 @@ export default function Dashboard() {
       <DashboardShell
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        rooms={ROOMS}
+        rooms={displayRooms}
         activeRoom={activeRoom}
-        onSelectRoom={setActiveRoom}
+        onSelectRoom={setActiveRoomState}
         messageCount={messages.length}
         bottomRef={bottomRef}
         profileDisplayName={profile.sidebarDisplayName}
@@ -304,6 +337,12 @@ export default function Dashboard() {
         onSaveContact={handleSaveContact}
         onViewProfile={setViewProfile}
         onContactUser={handleContactUser}
+      />
+
+      <CreateRoomModal
+        open={plusModal.isOpen && plusModal.type === 'create_room'}
+        onClose={() => setPlusModal({ isOpen: false, type: null })}
+        onCreate={handleCreateRoom}
       />
 
       <ProfileToast message={toastMsg ?? profile.toastMsg} />

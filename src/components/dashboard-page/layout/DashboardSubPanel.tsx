@@ -114,8 +114,7 @@ export function DashboardSubPanel({
                 </button>
                 <button 
                     onClick={() => {
-                    alert('Fitur buat room baru dipicu')
-                    setPlusModal({ isOpen: false, type: null })
+                      setPlusModal({ isOpen: true, type: 'create_room' })
                     }}
                     className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-white/90 border-t border-white/[0.04]"
                 >
