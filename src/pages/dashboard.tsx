@@ -57,7 +57,7 @@ export default function Dashboard() {
 
   const { currUser, logoutUser } = useAuthStore()
   const { subscribeToRoom, subscribeToStarredMessages, messages } = useMsgStore()
-  const { pesan: aiMessages } = useChatbotStore()
+  const { messages: aiMessages } = useChatbotStore()
   const {
     contacts,
     isLoading: contactsLoading,

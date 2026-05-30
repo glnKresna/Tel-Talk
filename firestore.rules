@@ -46,6 +46,14 @@ service cloud.firestore {
       match /starredMessages/{starId} {
         allow read, write: if isOwner(userId);
       }
+
+      match /chatbotSessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+
+        match /messages/{messageId} {
+          allow read, write: if isOwner(userId);
+        }
+      }
     }
 
     match /conversations/{convId} {

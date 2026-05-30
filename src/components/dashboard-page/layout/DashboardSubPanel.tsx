@@ -6,6 +6,7 @@ import type { ContactWithProfile } from '../../../types/contactTypes'
 import { getContactDisplayName } from '../../../types/contactTypes'
 import { ContactSidebarList } from '../contacts/ContactSidebarList'
 import { RoomList } from '../chat/RoomList'
+import { ChatbotSidebar } from '../ai/ChatbotSidebar'
 
 type SubPanelProps = {
     activeTab: ActiveTab
@@ -93,9 +94,7 @@ export function DashboardSubPanel({
             )}
 
             {activeTab === 'ai' && (
-            <div className="text-center text-xs text-white/30 pt-8 px-4">
-                Gunakan panel kanan untuk berinteraksi langsung dengan Chatbot Tel-Talk.
-            </div>
+              <ChatbotSidebar isSidebarOpen={true} />
             )}
         </div>
 

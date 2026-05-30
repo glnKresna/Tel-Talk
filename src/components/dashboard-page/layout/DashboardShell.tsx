@@ -117,7 +117,14 @@ export function DashboardShell({
         <header className="relative z-20 flex items-center gap-3 px-6 py-4 border-b border-white/[0.06] bg-[#13131a]/50 backdrop-blur-sm h-[65px]">
           {activeTab === 'dms' && (
             <div className="flex-1 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div
+                className={`flex items-center gap-3 transition-opacity ${selectedContact ? 'cursor-pointer hover:opacity-80' : ''}`}
+                onClick={() => {
+                  if (selectedContact) {
+                    onViewContactProfile?.()
+                  }
+                }}
+              >
                 {selectedContact && (
                   <AvatarCircle
                     photoURL={activeProfile?.photoURL ?? selectedContact.profile?.photoURL ?? null}

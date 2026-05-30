@@ -1,32 +1,23 @@
 @import "tailwindcss";
 
-/* =========================================
-   CUSTOM SCROLLBAR UNTUK TEMA GELAP
-   ========================================= */
-
-/* Untuk browser berbasis WebKit (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
-  width: 6px;  /* Lebar scrollbar vertikal */
-  height: 6px; /* Tinggi scrollbar horizontal (jika ada) */
+  width: 6px;
+  height: 6px;
 }
 
-/* Track (Jalur background scrollbar) - Dibuat transparan agar putihnya hilang */
 ::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
 }
 
-/* Thumb (Batang scrollbar yang bisa ditarik) */
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1); /* Warna putih yang sangat transparan */
-  border-radius: 10px; /* Ujungnya dibuat melengkung halus */
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
 
-/* Saat batang scrollbar disorot mouse */
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5); /* Berubah jadi warna violet/ungu khas Tel-Talk */
+  background: rgba(139, 92, 246, 0.5);
 }
 
-/* Untuk browser Firefox */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;

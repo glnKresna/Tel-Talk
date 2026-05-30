@@ -36,7 +36,26 @@ export function ContactListItem({
       (snapshot) => {
         if (!snapshot.empty) {
           const docSnap = snapshot.docs[0]
-          setLastMessage({ id: docSnap.id, ...docSnap.data() } as Pesan)
+          const msg = { id: docSnap.id, ...docSnap.data() } as Pesan
+
+          // Check if message was sent before or at the clear chat timestamp
+          if (contact.clearedAt && msg.waktuKirim) {
+            const clearedAtMs =
+              typeof contact.clearedAt.toMillis === 'function'
+                ? contact.clearedAt.toMillis()
+                : (contact.clearedAt as any).seconds * 1000
+            const waktuKirimMs =
+              typeof msg.waktuKirim.toMillis === 'function'
+                ? msg.waktuKirim.toMillis()
+                : (msg.waktuKirim as any).seconds * 1000
+
+            if (waktuKirimMs <= clearedAtMs) {
+              setLastMessage(null)
+              return
+            }
+          }
+
+          setLastMessage(msg)
         } else {
           setLastMessage(null)
         }
@@ -47,7 +66,7 @@ export function ContactListItem({
     )
 
     return unsubscribe
-  }, [currUser?.uid, contact.contactUid])
+  }, [currUser?.uid, contact.contactUid, contact.clearedAt])
 
   const lastMessageTime = lastMessage?.waktuKirim?.toDate
     ? format(lastMessage.waktuKirim.toDate(), 'HH:mm', { locale: id })
