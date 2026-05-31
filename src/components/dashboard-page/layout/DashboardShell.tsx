@@ -14,6 +14,7 @@ import { ChatbotPanel } from '../ai/ChatbotPanel'
 import MessageBubble from '../../messageBubble'
 import { useMsgStore } from '../../../store/useMsgStore'
 import { AvatarCircle } from '../../profile-page/avatarCircle'
+import { GroupInfoSidebar } from '../chat/GroupInfoSidebar'
 
 type Props = {
   activeTab: ActiveTab
@@ -75,6 +76,12 @@ export function DashboardShell({
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  
+  const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false)
+
+  useEffect(() => {
+    setIsGroupInfoOpen(false)
+  }, [activeRoom.id, activeTab])
 
   useEffect(() => {
     if (!dmMenuOpen) return
@@ -238,7 +245,13 @@ export function DashboardShell({
             </div>
           )}
           {activeTab === 'rooms' && (
-            <ChatHeader activeRoom={activeRoom} messageCount={messageCount} />
+            <div
+              className="flex items-center gap-3 cursor-pointer hover:bg-white/[0.03] px-3 py-1.5 rounded-xl transition-all max-w-fit select-none"
+              onClick={() => setIsGroupInfoOpen((prev) => !prev)}
+              title="Klik untuk info grup"
+            >
+              <ChatHeader activeRoom={activeRoom} messageCount={messageCount} />
+            </div>
           )}
           {activeTab === 'pinned' && (
             <div className="text-sm font-medium text-white/80">Pesan Berbintang</div>
@@ -246,7 +259,7 @@ export function DashboardShell({
           {activeTab === 'ai' && <ChatbotHeader />}
         </header>
 
-        <div className="flex-1 overflow-hidden relative flex flex-col">
+        <div className={`flex-1 overflow-hidden relative flex ${activeTab === 'rooms' && isGroupInfoOpen ? 'flex-row' : 'flex-col'}`}>
           {activeTab === 'dms' && selectedContact && (
             <ChatPanel
               activeRoom={{ id: [currentUserId, selectedContact.contactUid].sort().join('_'), name: getContactDisplayName(selectedContact).replace(/^@/, ''), icon: '👤' }}
@@ -259,13 +272,21 @@ export function DashboardShell({
             />
           )}
           {activeTab === 'dms' && !selectedContact && (
-            <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2">
+            <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2 w-full">
               <span className="text-4xl">💬</span>
               <p className="text-sm">Silakan pilih kontak untuk memulai obrolan pribadi</p>
             </div>
           )}
           {activeTab === 'rooms' && (
-            <ChatPanel activeRoom={activeRoom} bottomRef={bottomRef} />
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+              <ChatPanel activeRoom={activeRoom} bottomRef={bottomRef} />
+            </div>
+          )}
+          {activeTab === 'rooms' && isGroupInfoOpen && (
+            <GroupInfoSidebar
+              activeRoom={activeRoom}
+              onClose={() => setIsGroupInfoOpen(false)}
+            />
           )}
           {activeTab === 'pinned' && (
             isLoading && starredMessages.length === 0 ? (

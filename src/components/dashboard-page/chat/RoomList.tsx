@@ -1,4 +1,5 @@
 import type { Room } from '../../../types/dashboardTypes'
+import { AvatarCircle } from '../../profile-page/avatarCircle'
 
 type Props = {
   rooms: Room[]
@@ -20,7 +21,12 @@ export function RoomList({ rooms, activeRoomId, isSidebarOpen, onSelectRoom }: P
               ? 'bg-violet-600/15 text-violet-300 border border-violet-500/20'
               : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'}`}
         >
-          <span className="text-base">{room.icon}</span>
+          <AvatarCircle
+            photoURL={room.photoURL || null}
+            displayName={room.name}
+            size="xs"
+            variant="dashboard"
+          />
           {isSidebarOpen && <span className="font-medium">{room.name}</span>}
         </button>
       ))}

@@ -6,6 +6,8 @@ export interface Room {
   id: string
   name: string
   icon: string
+  photoURL?: string | null
+  members?: string[]
 }
 
 export interface FilePreviewState {

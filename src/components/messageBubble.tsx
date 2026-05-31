@@ -6,6 +6,28 @@ import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import type { Pesan } from '../store/useMsgStore'
 import { useMsgStore } from '../store/useMsgStore'
 import { auth } from '../config/firebase'
+import { AvatarCircle } from './profile-page/avatarCircle'
+
+const colors = [
+  'text-emerald-400',
+  'text-sky-400',
+  'text-amber-400',
+  'text-rose-400',
+  'text-indigo-400',
+  'text-teal-400',
+  'text-orange-400',
+  'text-pink-400'
+]
+
+const getSenderColor = (name: string) => {
+  if (!name) return 'text-violet-400'
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const index = Math.abs(hash) % colors.length
+  return colors[index]
+}
 
 type Props = {
   roomId: string
@@ -151,16 +173,21 @@ export default function MessageBubble({
         className={`flex items-end gap-2 mb-3 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}
       >
         {!isOwnMessage && !roomId.includes('_') && (
-          <div className="w-7 h-7 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mb-1">
-            <span className="text-[10px] font-bold text-violet-300">
-              {senderName?.[0]?.toUpperCase() ?? '?'}
-            </span>
+          <div className="mb-1 shrink-0">
+            <AvatarCircle
+              photoURL={message.senderPhotoURL || null}
+              displayName={senderName}
+              size="xs"
+              variant="dashboard"
+            />
           </div>
         )}
 
         <div className={`flex flex-col gap-1 max-w-[72%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
           {!isOwnMessage && !roomId.includes('_') && (
-            <span className="text-[10px] text-zinc-500 px-1">{senderName}</span>
+            <span className={`text-[11px] font-semibold px-1 ${getSenderColor(senderName)}`}>
+              {senderName}
+            </span>
           )}
 
           <div

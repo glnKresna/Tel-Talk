@@ -31,6 +31,7 @@ export interface Pesan {
   parentId?: string
   parentType?: 'rooms' | 'conversations'
   starredAt?: Timestamp | null
+  senderPhotoURL?: string | null
 
   // Reply fields
   replyToId?: string | null
@@ -141,6 +142,7 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
         isiPesan: text,
         senderId: user.uid,
         senderName,
+        senderPhotoURL: user.photoURL || null,
         waktuKirim: serverTimestamp(),
         statusBaca: false
       };
@@ -178,6 +180,7 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
         isiPesan: text,
         senderId: user.uid,
         senderName,
+        senderPhotoURL: user.photoURL || null,
         waktuKirim: serverTimestamp(),
         statusBaca: false,
         fileUrl: downloadUrl,
