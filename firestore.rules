@@ -80,6 +80,9 @@ service cloud.firestore {
             (resource.data.senderId == request.auth.uid
               && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isiPesan', 'editedAt']))
             || request.resource.data.diff(resource.data).changedKeys().hasOnly(['isPinned'])
+            || (request.auth.uid != resource.data.senderId
+              && request.resource.data.diff(resource.data).changedKeys().hasOnly(['statusBaca'])
+              && request.resource.data.statusBaca == true)
           );
 
         allow delete: if isSignedIn()
