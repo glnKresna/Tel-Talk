@@ -20,7 +20,6 @@ export function ContactSearch({
   onContactUser,
 }: Props) {
   const [query, setQuery] = useState('')
-  const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchResults, setSearchResults] = useState<PublicProfile[]>([])
   const [suggestions, setSuggestions] = useState<PublicProfile[]>([])
@@ -70,7 +69,6 @@ export function ContactSearch({
 
     if (!targetSearch) return
 
-    setIsSearching(true)
     try {
       const results = await searchUsersByName(targetSearch, currentUserId)
       if (results.length === 0) {
@@ -80,8 +78,6 @@ export function ContactSearch({
       }
     } catch {
       setError('Gagal mencari user. Coba lagi.')
-    } finally {
-      setIsSearching(false)
     }
   }
 
@@ -103,30 +99,20 @@ export function ContactSearch({
   return (
     <div className="space-y-4" ref={containerRef}>
       <div className="relative flex flex-col gap-2">
-        <div className="flex gap-2 relative">
-          <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-medium text-sm select-none">
-              @
-            </span>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => void handleInputChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleSearch()
-              }}
-              placeholder="username_teman"
-              className="w-full bg-[#1e1e2a] border border-white/[0.08] rounded-xl pl-8 pr-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => void handleSearch()}
-            disabled={isSearching || !query.trim()}
-            className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-semibold text-white disabled:opacity-50 transition-colors"
-          >
-            {isSearching ? '...' : 'Cari'}
-          </button>
+        <div className="relative">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-medium text-sm select-none">
+            @
+          </span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => void handleInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleSearch()
+            }}
+            placeholder="username_teman"
+            className="w-full bg-[#1e1e2a] border border-white/[0.08] rounded-xl pl-8 pr-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
+          />
         </div>
 
         {/* Floating Autocomplete Dropdown */}

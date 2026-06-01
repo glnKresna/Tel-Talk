@@ -42,7 +42,7 @@ export function AddContactModal({
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg rounded-2xl bg-[#13131a] border border-white/[0.08] shadow-2xl p-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-lg rounded-2xl bg-[#13131a] border border-white/[0.08] shadow-2xl p-6 overflow-visible animate-in fade-in zoom-in-95 duration-200"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 mb-4">
