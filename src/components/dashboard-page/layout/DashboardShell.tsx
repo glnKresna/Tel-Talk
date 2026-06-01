@@ -15,12 +15,14 @@ import MessageBubble from '../../messageBubble'
 import { useMsgStore } from '../../../store/useMsgStore'
 import { AvatarCircle } from '../../profile-page/avatarCircle'
 import { GroupInfoSidebar } from '../chat/GroupInfoSidebar'
+import { UserInfoSidebar } from '../chat/UserInfoSidebar'
+import { useRoomStore } from '../../../store/useRoomStore'
 
 type Props = {
   activeTab: ActiveTab
   onTabChange: (tab: ActiveTab) => void
   rooms: Room[]
-  activeRoom: Room
+  activeRoom: Room | null
   onSelectRoom: (room: Room) => void
   messageCount: number
   bottomRef: RefObject<HTMLDivElement | null>
@@ -38,8 +40,10 @@ type Props = {
   setPlusModal: Dispatch<SetStateAction<ModalState>>
   currentUserId: string
   onViewContactProfile?: () => void
+  onViewProfile?: (profile: PublicProfile) => void
   onClearChat?: () => void
   onCloseChat?: () => void
+  onCloseRoomChat?: () => void
   onBlockContact?: () => void
   activeProfile?: PublicProfile | null
 }
@@ -65,23 +69,95 @@ export function DashboardShell({
   plusModal,
   setPlusModal,
   currentUserId,
-  onViewContactProfile,
   onClearChat,
   onCloseChat,
+  onCloseRoomChat,
   onBlockContact,
   activeProfile,
+  onViewProfile,
 }: Props) {
   const { starredMessages, isLoading } = useMsgStore()
   const [dmMenuOpen, setDmMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-  
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false)
+  const [isDmInfoOpen, setIsDmInfoOpen] = useState(false)
+
+  // States & Refs untuk menu titik tiga header Room
+  const [roomMenuOpen, setRoomMenuOpen] = useState(false)
+  const roomMenuRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsGroupInfoOpen(false)
-  }, [activeRoom.id, activeTab])
+    setIsDmInfoOpen(false)
+  }, [activeRoom?.id, selectedContactId, activeTab])
+
+  useEffect(() => {
+    if (!roomMenuOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (roomMenuRef.current && !roomMenuRef.current.contains(e.target as Node)) {
+        setRoomMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [roomMenuOpen])
+
+  const isCurrentUserAdmin = activeRoom 
+    ? activeRoom.admin === currentUserId || activeRoom.admins?.includes(currentUserId)
+    : false
+
+  const handleRenameRoom = async () => {
+    if (!activeRoom) return
+    const nextName = window.prompt("Ubah nama Room:", activeRoom.name)
+    if (nextName && nextName.trim() && nextName.trim() !== activeRoom.name) {
+      if (nextName.trim().length > 25) {
+        alert("Nama room maksimal 25 karakter.")
+        return
+      }
+      try {
+        await useRoomStore.getState().updateRoomName(activeRoom.id, nextName.trim())
+      } catch (err) {
+        console.error(err)
+        alert("Gagal mengubah nama room.")
+      }
+    }
+  }
+
+  const handleClearRoomChat = async () => {
+    if (!activeRoom) return
+    const confirmClear = window.confirm("Apakah Anda yakin ingin membersihkan riwayat chat di Room ini?")
+    if (confirmClear) {
+      try {
+        await useRoomStore.getState().clearRoomChat(activeRoom.id, currentUserId)
+        alert("Percakapan room berhasil dibersihkan.")
+      } catch (err) {
+        console.error(err)
+        alert("Gagal membersihkan percakapan.")
+      }
+    }
+  }
+
+  const handleLeaveRoom = async () => {
+    if (!activeRoom) return
+    if (activeRoom.admin === currentUserId) {
+      alert("Sebagai Pembuat Room Utama, Anda tidak bisa keluar dari Room.")
+      return
+    }
+    const confirmLeave = window.confirm("Apakah Anda yakin ingin keluar dari Room ini?")
+    if (confirmLeave) {
+      try {
+        await useRoomStore.getState().leaveRoom(activeRoom.id, currentUserId)
+        onCloseRoomChat?.()
+      } catch (err) {
+        console.error(err)
+        alert("Gagal keluar dari room.")
+      }
+    }
+  }
 
   useEffect(() => {
     if (!dmMenuOpen) return
@@ -110,7 +186,7 @@ export function DashboardShell({
       <DashboardSubPanel
         activeTab={activeTab}
         rooms={rooms}
-        activeRoomId={activeRoom.id}
+        activeRoomId={activeRoom?.id || ''}
         onSelectRoom={onSelectRoom}
         contacts={contacts}
         contactsLoading={contactsLoading}
@@ -128,7 +204,7 @@ export function DashboardShell({
                 className={`flex items-center gap-3 transition-opacity ${selectedContact ? 'cursor-pointer hover:opacity-80' : ''}`}
                 onClick={() => {
                   if (selectedContact) {
-                    onViewContactProfile?.()
+                    setIsDmInfoOpen((prev) => !prev)
                   }
                 }}
               >
@@ -173,7 +249,7 @@ export function DashboardShell({
                         className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200"
                         onClick={() => {
                           setDmMenuOpen(false)
-                          onViewContactProfile?.()
+                          setIsDmInfoOpen(true)
                         }}
                       >
                         Info Pengguna
@@ -244,13 +320,98 @@ export function DashboardShell({
               )}
             </div>
           )}
-          {activeTab === 'rooms' && (
-            <div
-              className="flex items-center gap-3 cursor-pointer hover:bg-white/[0.03] px-3 py-1.5 rounded-xl transition-all max-w-fit select-none"
-              onClick={() => setIsGroupInfoOpen((prev) => !prev)}
-              title="Klik untuk info grup"
-            >
-              <ChatHeader activeRoom={activeRoom} messageCount={messageCount} />
+          {activeTab === 'rooms' && activeRoom && (
+            <div className="flex-1 flex items-center justify-between">
+              <div
+                className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity select-none min-w-0"
+                onClick={() => setIsGroupInfoOpen((prev) => !prev)}
+                title="Klik untuk info grup"
+              >
+                <ChatHeader activeRoom={activeRoom} messageCount={messageCount} />
+              </div>
+              
+              <div className="relative" ref={roomMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setRoomMenuOpen((v) => !v)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
+                  title="Menu Room"
+                >
+                  <MoreVertical size={18} />
+                </button>
+
+                {roomMenuOpen && (
+                  <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-[#13131a] border border-white/[0.08] shadow-2xl overflow-hidden py-1 z-50">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200 cursor-pointer"
+                      onClick={() => {
+                        setRoomMenuOpen(false)
+                        setIsGroupInfoOpen(true)
+                      }}
+                    >
+                      Info Room
+                    </button>
+                    
+                    {isCurrentUserAdmin && (
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200 cursor-pointer"
+                        onClick={() => {
+                          setRoomMenuOpen(false)
+                          void handleRenameRoom()
+                        }}
+                      >
+                        Ubah Nama
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200 cursor-pointer"
+                      onClick={() => {
+                        setRoomMenuOpen(false)
+                        setIsSearchOpen((v) => !v)
+                      }}
+                    >
+                      Cari
+                    </button>
+
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200 cursor-pointer"
+                      onClick={() => {
+                        setRoomMenuOpen(false)
+                        void handleClearRoomChat()
+                      }}
+                    >
+                      Bersihkan Chat
+                    </button>
+
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-white/[0.04] text-left text-xs text-zinc-200 cursor-pointer"
+                      onClick={() => {
+                        setRoomMenuOpen(false)
+                        onCloseRoomChat?.()
+                      }}
+                    >
+                      Tutup Chat
+                    </button>
+
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-red-500/10 text-left text-xs text-red-300 border-t border-white/[0.04] cursor-pointer"
+                      onClick={() => {
+                        setRoomMenuOpen(false)
+                        void handleLeaveRoom()
+                      }}
+                    >
+                      Keluar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {activeTab === 'pinned' && (
@@ -259,17 +420,19 @@ export function DashboardShell({
           {activeTab === 'ai' && <ChatbotHeader />}
         </header>
 
-        <div className={`flex-1 overflow-hidden relative flex ${activeTab === 'rooms' && isGroupInfoOpen ? 'flex-row' : 'flex-col'}`}>
+        <div className={`flex-1 overflow-hidden relative flex ${(activeTab === 'rooms' && isGroupInfoOpen) || (activeTab === 'dms' && isDmInfoOpen && selectedContact) ? 'flex-row' : 'flex-col'}`}>
           {activeTab === 'dms' && selectedContact && (
-            <ChatPanel
-              activeRoom={{ id: [currentUserId, selectedContact.contactUid].sort().join('_'), name: getContactDisplayName(selectedContact).replace(/^@/, ''), icon: '👤' }}
-              bottomRef={bottomRef}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              isSearchOpen={isSearchOpen}
-              setIsSearchOpen={setIsSearchOpen}
-              contact={selectedContact}
-            />
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+              <ChatPanel
+                activeRoom={{ id: [currentUserId, selectedContact.contactUid].sort().join('_'), name: getContactDisplayName(selectedContact).replace(/^@/, ''), icon: '👤' }}
+                bottomRef={bottomRef}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                isSearchOpen={isSearchOpen}
+                setIsSearchOpen={setIsSearchOpen}
+                contact={selectedContact}
+              />
+            </div>
           )}
           {activeTab === 'dms' && !selectedContact && (
             <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2 w-full">
@@ -277,15 +440,40 @@ export function DashboardShell({
               <p className="text-sm">Silakan pilih kontak untuk memulai obrolan pribadi</p>
             </div>
           )}
-          {activeTab === 'rooms' && (
+          {activeTab === 'rooms' && activeRoom && (
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-              <ChatPanel activeRoom={activeRoom} bottomRef={bottomRef} />
+              <ChatPanel
+                activeRoom={activeRoom}
+                bottomRef={bottomRef}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                isSearchOpen={isSearchOpen}
+                setIsSearchOpen={setIsSearchOpen}
+              />
             </div>
           )}
-          {activeTab === 'rooms' && isGroupInfoOpen && (
+          {activeTab === 'rooms' && !activeRoom && (
+            <div className="flex flex-col items-center justify-center h-full text-white/40 gap-2 w-full">
+              <span className="text-4xl">💬</span>
+              <p className="text-sm">Silakan pilih room untuk memulai obrolan grup</p>
+            </div>
+          )}
+          {activeTab === 'rooms' && isGroupInfoOpen && activeRoom && (
             <GroupInfoSidebar
               activeRoom={activeRoom}
               onClose={() => setIsGroupInfoOpen(false)}
+              currentUserId={currentUserId}
+              onViewProfile={onViewProfile}
+            />
+          )}
+          {activeTab === 'dms' && isDmInfoOpen && selectedContact && (
+            <UserInfoSidebar
+              contact={selectedContact}
+              activeProfile={activeProfile ?? null}
+              onClose={() => setIsDmInfoOpen(false)}
+              onRenameContact={onRenameContact}
+              onBlockContact={() => onBlockContact?.()}
+              onRemoveContact={onRemoveContact}
             />
           )}
           {activeTab === 'pinned' && (

@@ -7,6 +7,9 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  query,
+  orderBy,
+  limit,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -43,10 +46,12 @@ export const useContactStore = create<ContactStore>((set, get) => ({
       activeUnsubscribe = null
     }
 
-    set({ isLoading: true, error: null, contacts: [] })
+    set({ isLoading: true, error: null })
+
+    const lastMsgUnsubs = new Map<string, () => void>()
 
     const contactsRef = collection(db, 'users', ownerUid, 'contacts')
-    activeUnsubscribe = onSnapshot(
+    const unsubscribeMain = onSnapshot(
       contactsRef,
       async (snapshot) => {
         const baseContacts: Contact[] = snapshot.docs.map((d) => {
@@ -62,6 +67,15 @@ export const useContactStore = create<ContactStore>((set, get) => ({
           }
         })
 
+        // Clean up listeners for removed contacts
+        const activeContactUids = new Set(baseContacts.map((c) => c.contactUid))
+        for (const [contactUid, unsub] of lastMsgUnsubs.entries()) {
+          if (!activeContactUids.has(contactUid)) {
+            unsub()
+            lastMsgUnsubs.delete(contactUid)
+          }
+        }
+
         const withProfiles = await Promise.all(
           baseContacts.map(async (contact) => {
             try {
@@ -74,11 +88,88 @@ export const useContactStore = create<ContactStore>((set, get) => ({
           }),
         )
 
-        withProfiles.sort((a, b) =>
-          (a.customName || a.profile?.username || '').localeCompare(
-            b.customName || b.profile?.username || '',
-          ),
-        )
+        // Setup real-time last message listener for each contact
+        withProfiles.forEach((c) => {
+          if (!lastMsgUnsubs.has(c.contactUid)) {
+            const conversationId = [ownerUid, c.contactUid].sort().join('_')
+            const messagesRef = collection(db, 'conversations', conversationId, 'messages')
+            const q = query(messagesRef, orderBy('waktuKirim', 'desc'), limit(1))
+
+            const unsub = onSnapshot(
+              q,
+              (msgSnap) => {
+                let lastMsg: any = null
+                if (!msgSnap.empty) {
+                  const docSnap = msgSnap.docs[0]
+                  const msgData = docSnap.data()
+
+                  // Filter out messages that were sent before clear chat timestamp
+                  let isCleared = false
+                  if (c.clearedAt && msgData.waktuKirim) {
+                    const clearedAtMs =
+                      typeof c.clearedAt.toMillis === 'function'
+                        ? c.clearedAt.toMillis()
+                        : (c.clearedAt as any).seconds * 1000
+                    const waktuKirimMs =
+                      typeof msgData.waktuKirim.toMillis === 'function'
+                        ? msgData.waktuKirim.toMillis()
+                        : (msgData.waktuKirim as any).seconds * 1000
+
+                    if (waktuKirimMs <= clearedAtMs) {
+                      isCleared = true
+                    }
+                  }
+
+                  if (!isCleared) {
+                    lastMsg = { id: docSnap.id, ...msgData }
+                  }
+                }
+
+                // Update contact's lastMessage in store and sort
+                const currentContacts = get().contacts
+                const updatedContacts = currentContacts.map((item) => {
+                  if (item.contactUid === c.contactUid) {
+                    return { ...item, lastMessage: lastMsg } satisfies ContactWithProfile
+                  }
+                  return item
+                })
+
+                // Sort contacts dynamically: latest messages first
+                updatedContacts.sort((a, b) => {
+                  const timeA =
+                    a.lastMessage?.waktuKirim?.toMillis?.() ||
+                    a.savedAt?.toMillis?.() ||
+                    0
+                  const timeB =
+                    b.lastMessage?.waktuKirim?.toMillis?.() ||
+                    b.savedAt?.toMillis?.() ||
+                    0
+
+                  if (timeB !== timeA) {
+                    return timeB - timeA
+                  }
+                  return (a.customName || a.profile?.username || '').localeCompare(
+                    b.customName || b.profile?.username || '',
+                  )
+                })
+
+                set({ contacts: updatedContacts })
+              },
+              (err) => {
+                console.error(`Error loading last message inside store for ${c.contactUid}:`, err)
+              }
+            )
+
+            lastMsgUnsubs.set(c.contactUid, unsub)
+          }
+        })
+
+        // Initial sorting (by savedAt desc) before sub-listeners fire
+        withProfiles.sort((a, b) => {
+          const timeA = a.savedAt?.toMillis?.() || 0
+          const timeB = b.savedAt?.toMillis?.() || 0
+          return timeB - timeA
+        })
 
         set({ contacts: withProfiles, isLoading: false, error: null })
       },
@@ -92,12 +183,15 @@ export const useContactStore = create<ContactStore>((set, get) => ({
       },
     )
 
-    return () => {
-      if (activeUnsubscribe) {
-        activeUnsubscribe()
-        activeUnsubscribe = null
+    activeUnsubscribe = () => {
+      unsubscribeMain()
+      for (const unsub of lastMsgUnsubs.values()) {
+        unsub()
       }
+      lastMsgUnsubs.clear()
     }
+
+    return activeUnsubscribe
   },
 
   addContact: async (ownerUid, contactUid, addedVia) => {

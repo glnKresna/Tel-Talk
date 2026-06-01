@@ -7,6 +7,7 @@ import type { Pesan } from '../store/useMsgStore'
 import { useMsgStore } from '../store/useMsgStore'
 import { auth } from '../config/firebase'
 import { AvatarCircle } from './profile-page/avatarCircle'
+import { MessageStatus } from './UI/MessageStatus'
 
 const colors = [
   'text-emerald-400',
@@ -312,7 +313,12 @@ export default function MessageBubble({
             >
               {isStarred && <span className="mr-1 text-yellow-400">⭐</span>}
               {message.editedAt && <span className="mr-1">(diedit)</span>}
-              {formattedTime}
+              <span className="inline-flex items-center gap-1">
+                <span>{formattedTime}</span>
+                {isOwnMessage && (
+                  <MessageStatus statusBaca={message.statusBaca} />
+                )}
+              </span>
             </span>
           </div>
         </div>

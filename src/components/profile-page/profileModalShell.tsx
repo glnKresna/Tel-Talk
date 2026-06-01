@@ -21,7 +21,7 @@ export function ProfileModalShell({ open, onClose, busy = false, children }: Pro
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg rounded-2xl bg-[#13131a] border border-white/[0.08] shadow-2xl p-5 overflow-hidden"
+        className="relative w-full max-w-lg rounded-2xl bg-[#13131a] border border-white/[0.08] shadow-2xl p-5"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {children}

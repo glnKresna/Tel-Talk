@@ -16,7 +16,7 @@ import { ensureDiscoverabilityProfile } from '../lib/syncPublicProfile'
 import { ensureConversation } from '../lib/conversations'
 import type { ActiveTab, Room, ModalState } from '../types/dashboardTypes'
 import type { ContactAddedVia, ContactWithProfile, PublicProfile } from '../types/contactTypes'
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
 const updateUserPresence = async (uid: string, online: boolean) => {
@@ -68,6 +68,7 @@ export default function Dashboard() {
   // State Baru untuk mengontrol Floating Window opsi '+'
   const [plusModal, setPlusModal] = useState<ModalState>({ isOpen: false, type: null })
   const [activeProfile, setActiveProfile] = useState<PublicProfile | null>(null)
+  const [roomClearedAt, setRoomClearedAt] = useState<Timestamp | null>(null)
   
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -118,18 +119,43 @@ export default function Dashboard() {
     return subscribeRooms()
   }, [currUser, subscribeRooms])
 
+  // Real-time listener untuk data clearedRooms dari user aktif
+  useEffect(() => {
+    if (!currUser || activeTab !== 'rooms') {
+      setRoomClearedAt(null)
+      return
+    }
+
+    const docRef = doc(db, 'users', currUser.uid, 'clearedRooms', activeRoom.id)
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setRoomClearedAt(docSnap.data().clearedAt || null)
+        } else {
+          setRoomClearedAt(null)
+        }
+      },
+      (err) => {
+        console.error('Error listening to cleared rooms:', err)
+        setRoomClearedAt(null)
+      }
+    )
+    return () => unsubscribe()
+  }, [currUser, activeTab, activeRoom.id])
+
   useEffect(() => {
     if (!currUser) return
     if (activeTab === 'rooms') {
-      const unsubscribe = subscribeToRoom(activeRoom.id)
+      const unsubscribe = subscribeToRoom(activeRoom.id, currUser.uid, roomClearedAt)
       return () => unsubscribe()
     } else if (activeTab === 'dms' && selectedContactId) {
       const conversationId = [currUser.uid, selectedContactId].sort().join('_')
       const clearedAt = selectedContact?.clearedAt || null
-      const unsubscribe = subscribeToRoom(conversationId, clearedAt)
+      const unsubscribe = subscribeToRoom(conversationId, currUser.uid, clearedAt)
       return () => unsubscribe()
     }
-  }, [activeTab, activeRoom.id, selectedContactId, currUser, subscribeToRoom, selectedContact?.clearedAt])
+  }, [activeTab, activeRoom.id, selectedContactId, currUser, subscribeToRoom, selectedContact?.clearedAt, roomClearedAt])
 
   useEffect(() => {
     if (!currUser || activeTab !== 'dms' || !selectedContactId) return
@@ -233,11 +259,26 @@ export default function Dashboard() {
     }
   }
 
-  const handleCreateRoom = async (name: string, photoURL: string | null) => {
+  const handleCreateRoom = async (
+    name: string,
+    photoURL: string | null,
+    description: string,
+    status: 'public' | 'private',
+    invitedMembers: string[]
+  ) => {
     if (!currUser) return
     try {
-      const newRoomId = await createRoom(name, photoURL, currUser.uid)
-      setActiveRoomState({ id: newRoomId, name, icon: '💬', photoURL })
+      const newRoomId = await createRoom(name, photoURL, currUser.uid, description, status, invitedMembers)
+      setActiveRoomState({
+        id: newRoomId,
+        name,
+        icon: '💬',
+        photoURL,
+        description,
+        status,
+        admin: currUser.uid,
+        members: [currUser.uid, ...invitedMembers],
+      })
       setActiveTab('rooms')
       triggerToast(`Room "${name}" berhasil dibuat!`)
     } catch {
@@ -271,6 +312,8 @@ export default function Dashboard() {
         plusModal={plusModal}
         setPlusModal={setPlusModal}
         currentUserId={currUser.uid}
+        onViewProfile={setViewProfile}
+        onCloseRoomChat={() => setActiveRoomState(null)}
         onViewContactProfile={() => {
           if (selectedContact?.profile) {
             setViewProfile(selectedContact.profile)
@@ -342,6 +385,7 @@ export default function Dashboard() {
       <CreateRoomModal
         open={plusModal.isOpen && plusModal.type === 'create_room'}
         onClose={() => setPlusModal({ isOpen: false, type: null })}
+        contacts={contacts}
         onCreate={handleCreateRoom}
       />
 

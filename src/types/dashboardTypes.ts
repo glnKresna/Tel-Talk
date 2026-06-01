@@ -8,6 +8,10 @@ export interface Room {
   icon: string
   photoURL?: string | null
   members?: string[]
+  description?: string
+  status?: 'public' | 'private'
+  admin?: string
+  admins?: string[]
 }
 
 export interface FilePreviewState {

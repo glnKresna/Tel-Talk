@@ -23,6 +23,7 @@ export interface Contact {
 
 export interface ContactWithProfile extends Contact {
   profile: PublicProfile | null
+  lastMessage?: any
 }
 
 export function getContactDisplayName(contact: ContactWithProfile): string {

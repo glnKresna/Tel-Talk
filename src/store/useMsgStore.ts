@@ -48,7 +48,7 @@ interface MsgStore {
   starredMessages: Pesan[]
   isLoading: boolean
   error: string | null
-  subscribeToRoom: (roomId: string, clearedAt?: Timestamp | null) => () => void
+  subscribeToRoom: (roomId: string, currentUserId: string, clearedAt?: Timestamp | null) => () => void
   subscribeToStarredMessages: (userId: string) => () => void
   kirimPesan: (roomId: string, text: string, user: any, replyTo?: Pesan | null) => Promise<void>
   kirimLampiran: (roomId: string, file: File, user: any, text?: string, replyTo?: Pesan | null) => Promise<void>
@@ -63,7 +63,7 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
   isLoading: false,
   error: null,
 
-  subscribeToRoom: (roomId, clearedAt) => {
+  subscribeToRoom: (roomId, currentUserId, clearedAt) => {
     set({ messages: [], isLoading: true, error: null });
     
     const isDM = roomId.includes('_');
@@ -78,13 +78,29 @@ export const useMsgStore = create<MsgStore>((set, get) => ({
           ...doc.data()
         })) as Pesan[];
 
-        if (isDM && clearedAt) {
+        if (clearedAt) {
           const clearedAtMs = typeof clearedAt.toMillis === 'function' ? clearedAt.toMillis() : (clearedAt as any).seconds * 1000;
           liveMessages = liveMessages.filter((msg) => {
             if (!msg.waktuKirim) return true;
             const waktuKirimMs = typeof msg.waktuKirim.toMillis === 'function' ? msg.waktuKirim.toMillis() : (msg.waktuKirim as any).seconds * 1000;
             return waktuKirimMs > clearedAtMs;
           });
+        }
+
+        // If DM, automatically mark received messages as read
+        if (isDM && currentUserId) {
+          const unreadMessages = liveMessages.filter(
+            (msg) => msg.senderId !== currentUserId && !msg.statusBaca && msg.id
+          )
+
+          if (unreadMessages.length > 0) {
+            unreadMessages.forEach((msg) => {
+              const msgDocRef = doc(db, 'conversations', roomId, 'messages', msg.id!)
+              updateDoc(msgDocRef, { statusBaca: true }).catch((err) =>
+                console.error('Error marking DM message as read:', err)
+              )
+            })
+          }
         }
 
         set({ messages: liveMessages, isLoading: false, error: null });

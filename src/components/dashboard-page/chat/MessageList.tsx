@@ -1,7 +1,30 @@
-import { useEffect, useMemo, type RefObject } from 'react'
+import { useEffect, useMemo, type RefObject, memo } from 'react'
+import { format, isToday, isYesterday } from 'date-fns'
+import { id } from 'date-fns/locale'
 import MessageBubble from '../../messageBubble'
+import { ChatTimelineSeparator } from '../../UI/ChatTimelineSeparator'
 import type { Pesan } from '../../../store/useMsgStore'
 import type { Room } from '../../../types/dashboardTypes'
+
+const getGroupDateLabel = (timestamp: any): string => {
+  if (!timestamp) return ''
+  try {
+    const date = typeof timestamp.toDate === 'function'
+      ? timestamp.toDate()
+      : new Date(timestamp.seconds * 1000)
+
+    if (isToday(date)) {
+      return 'Hari Ini'
+    }
+    if (isYesterday(date)) {
+      return 'Kemarin'
+    }
+    return format(date, 'dd/MM/yyyy', { locale: id })
+  } catch (err) {
+    console.error('Error grouping message date label:', err)
+    return ''
+  }
+}
 
 type Props = {
   activeRoom: Room
@@ -16,7 +39,7 @@ type Props = {
   onRequestReply?: (message: Pesan) => void
 }
 
-export function MessageList({
+export const MessageList = memo(function MessageList({
   activeRoom,
   messages,
   msgLoading,
@@ -47,6 +70,28 @@ export function MessageList({
     }
   }, [searchQuery, matchingMessages])
 
+  // Memoize date grouping and search highlighting to avoid heavy date-fns calculations on every keystroke
+  const messagesWithSeparators = useMemo(() => {
+    return messages.map((msg, index) => {
+      const isMatch = Boolean(
+        searchQuery.trim() &&
+          msg.isiPesan?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+
+      const currentLabel = getGroupDateLabel(msg.waktuKirim)
+      const prevMsg = index > 0 ? messages[index - 1] : null
+      const prevLabel = prevMsg ? getGroupDateLabel(prevMsg.waktuKirim) : null
+      const showSeparator = Boolean(currentLabel && currentLabel !== prevLabel)
+
+      return {
+        msg,
+        isMatch,
+        showSeparator,
+        currentLabel,
+      }
+    })
+  }, [messages, searchQuery])
+
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1">
       {msgLoading && messages.length === 0 && (
@@ -70,26 +115,26 @@ export function MessageList({
         </div>
       )}
 
-      {messages.map((msg) => {
-        const isMatch = Boolean(
-          searchQuery.trim() &&
-            msg.isiPesan?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+      {messagesWithSeparators.map(({ msg, isMatch, showSeparator, currentLabel }, index) => {
         return (
-          <MessageBubble
-            key={msg.id}
-            roomId={activeRoom.id}
-            message={msg}
-            isOwnMessage={msg.senderId === currentUserId}
-            isHighlighted={isMatch}
-            searchQuery={searchQuery}
-            onRequestEdit={onRequestEdit}
-            onRequestDelete={onRequestDelete}
-            onRequestReply={onRequestReply}
-          />
+          <div key={msg.id || index} className="flex flex-col">
+            {showSeparator && (
+              <ChatTimelineSeparator label={currentLabel} />
+            )}
+            <MessageBubble
+              roomId={activeRoom.id}
+              message={msg}
+              isOwnMessage={msg.senderId === currentUserId}
+              isHighlighted={isMatch}
+              searchQuery={searchQuery}
+              onRequestEdit={onRequestEdit}
+              onRequestDelete={onRequestDelete}
+              onRequestReply={onRequestReply}
+            />
+          </div>
         )
       })}
       <div ref={bottomRef} />
     </div>
   )
-}
+})

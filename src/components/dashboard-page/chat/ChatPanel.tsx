@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject, useCallback } from 'react'
 import { Search, X } from 'lucide-react'
 import { useMsgStore, type Pesan } from '../../../store/useMsgStore'
 import { useAuthStore } from '../../../store/useAuthStore'
@@ -117,6 +117,23 @@ export function ChatPanel({
     await hapusPesan(activeRoom.id, deleteConfirmMessageId)
   }
 
+  const handleRequestEdit = useCallback((messageId: string, currentText: string) => {
+    if (isSendingRef.current) return
+    setEditingMessageId(messageId)
+    setInputText(currentText)
+  }, [])
+
+  const handleRequestDelete = useCallback((messageId: string) => {
+    if (isSendingRef.current) return
+    setDeleteConfirmMessageId(messageId)
+  }, [])
+
+  const handleRequestReply = useCallback((message: Pesan) => {
+    if (isSendingRef.current) return
+    setEditingMessageId(null)
+    setReplyingMessage(message)
+  }, [])
+
   return (
     <>
       {isSearchOpen && (
@@ -159,20 +176,9 @@ export function ChatPanel({
         msgError={msgError}
         bottomRef={bottomRef}
         currentUserId={currUser?.uid}
-        onRequestEdit={(messageId, currentText) => {
-          if (isSendingRef.current) return
-          setEditingMessageId(messageId)
-          setInputText(currentText)
-        }}
-        onRequestDelete={(messageId) => {
-          if (isSendingRef.current) return
-          setDeleteConfirmMessageId(messageId)
-        }}
-        onRequestReply={(message) => {
-          if (isSendingRef.current) return
-          setEditingMessageId(null)
-          setReplyingMessage(message)
-        }}
+        onRequestEdit={handleRequestEdit}
+        onRequestDelete={handleRequestDelete}
+        onRequestReply={handleRequestReply}
       />
 
       {deleteConfirmMessageId && (
