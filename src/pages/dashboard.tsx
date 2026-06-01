@@ -42,22 +42,13 @@ export default function Dashboard() {
   const { rooms, subscribeRooms, createRoom } = useRoomStore()
   const [activeRoomState, setActiveRoomState] = useState<Room | null>(null)
 
-  const displayRooms = useMemo(() => {
-    if (rooms.length > 0) return rooms
-    return [
-      { id: 'general', name: 'General', icon: '💬', photoURL: null },
-      { id: 'random', name: 'Random', icon: '🎲', photoURL: null },
-      { id: 'dev', name: 'Dev Talk', icon: '💻', photoURL: null },
-    ]
-  }, [rooms])
-
-  const activeRoom = useMemo(() => {
+  const activeRoom = useMemo<Room | null>(() => {
     if (activeRoomState) {
-      const found = displayRooms.find(r => r.id === activeRoomState.id)
+      const found = rooms.find(r => r.id === activeRoomState.id)
       if (found) return found
     }
-    return displayRooms[0]
-  }, [activeRoomState, displayRooms])
+    return rooms[0] || null
+  }, [activeRoomState, rooms])
 
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
@@ -121,7 +112,7 @@ export default function Dashboard() {
 
   // Real-time listener untuk data clearedRooms dari user aktif
   useEffect(() => {
-    if (!currUser || activeTab !== 'rooms') {
+    if (!currUser || activeTab !== 'rooms' || !activeRoom) {
       setRoomClearedAt(null)
       return
     }
@@ -142,11 +133,11 @@ export default function Dashboard() {
       }
     )
     return () => unsubscribe()
-  }, [currUser, activeTab, activeRoom.id])
+  }, [currUser, activeTab, activeRoom?.id])
 
   useEffect(() => {
     if (!currUser) return
-    if (activeTab === 'rooms') {
+    if (activeTab === 'rooms' && activeRoom) {
       const unsubscribe = subscribeToRoom(activeRoom.id, currUser.uid, roomClearedAt)
       return () => unsubscribe()
     } else if (activeTab === 'dms' && selectedContactId) {
@@ -155,7 +146,7 @@ export default function Dashboard() {
       const unsubscribe = subscribeToRoom(conversationId, currUser.uid, clearedAt)
       return () => unsubscribe()
     }
-  }, [activeTab, activeRoom.id, selectedContactId, currUser, subscribeToRoom, selectedContact?.clearedAt, roomClearedAt])
+  }, [activeTab, activeRoom?.id, selectedContactId, currUser, subscribeToRoom, selectedContact?.clearedAt, roomClearedAt])
 
   useEffect(() => {
     if (!currUser || activeTab !== 'dms' || !selectedContactId) return
@@ -293,7 +284,7 @@ export default function Dashboard() {
       <DashboardShell
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        rooms={displayRooms}
+        rooms={rooms}
         activeRoom={activeRoom}
         onSelectRoom={setActiveRoomState}
         messageCount={messages.length}

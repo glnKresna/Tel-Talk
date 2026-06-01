@@ -327,7 +327,7 @@ export function DashboardShell({
                 onClick={() => setIsGroupInfoOpen((prev) => !prev)}
                 title="Klik untuk info grup"
               >
-                <ChatHeader activeRoom={activeRoom} messageCount={messageCount} />
+                <ChatHeader activeRoom={activeRoom} messageCount={messageCount} contacts={contacts} />
               </div>
               
               <div className="relative" ref={roomMenuRef}>
@@ -431,6 +431,7 @@ export function DashboardShell({
                 isSearchOpen={isSearchOpen}
                 setIsSearchOpen={setIsSearchOpen}
                 contact={selectedContact}
+                contacts={contacts}
               />
             </div>
           )}
@@ -449,6 +450,7 @@ export function DashboardShell({
                 setSearchQuery={setSearchQuery}
                 isSearchOpen={isSearchOpen}
                 setIsSearchOpen={setIsSearchOpen}
+                contacts={contacts}
               />
             </div>
           )}
@@ -464,6 +466,7 @@ export function DashboardShell({
               onClose={() => setIsGroupInfoOpen(false)}
               currentUserId={currentUserId}
               onViewProfile={onViewProfile}
+              contacts={contacts}
             />
           )}
           {activeTab === 'dms' && isDmInfoOpen && selectedContact && (

@@ -3,13 +3,16 @@ import { collection, getDocs, query, where, documentId } from 'firebase/firestor
 import { db } from '../../../config/firebase'
 import type { Room } from '../../../types/dashboardTypes'
 import { AvatarCircle } from '../../profile-page/avatarCircle'
+import type { ContactWithProfile } from '../../../types/contactTypes'
+import { getContactDisplayName } from '../../../types/contactTypes'
 
 type Props = {
   activeRoom: Room
   messageCount?: number
+  contacts?: ContactWithProfile[]
 }
 
-export function ChatHeader({ activeRoom }: Props) {
+export function ChatHeader({ activeRoom, contacts = [] }: Props) {
   const [memberNames, setMemberNames] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -34,7 +37,15 @@ export function ChatHeader({ activeRoom }: Props) {
           where(documentId(), 'in', activeRoom.members)
         )
         const snap = await getDocs(q)
-        const list = snap.docs.map((doc) => doc.data().username || 'user')
+        const list = snap.docs.map((doc) => {
+          const uid = doc.id
+          const username = doc.data().username || 'user'
+          const savedContact = contacts.find((c) => c.contactUid === uid)
+          if (savedContact) {
+            return getContactDisplayName(savedContact)
+          }
+          return `@${username}`
+        })
         list.sort((a, b) => a.localeCompare(b))
         setMemberNames(list)
       } catch (err) {

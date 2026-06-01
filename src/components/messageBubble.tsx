@@ -8,6 +8,8 @@ import { useMsgStore } from '../store/useMsgStore'
 import { auth } from '../config/firebase'
 import { AvatarCircle } from './profile-page/avatarCircle'
 import { MessageStatus } from './UI/MessageStatus'
+import type { ContactWithProfile } from '../types/contactTypes'
+import { getContactDisplayName } from '../types/contactTypes'
 
 const colors = [
   'text-emerald-400',
@@ -39,6 +41,7 @@ type Props = {
   isHighlighted?: boolean
   searchQuery?: string
   onRequestReply?: (message: Pesan) => void
+  contacts?: ContactWithProfile[]
 }
 
 export default function MessageBubble({
@@ -50,8 +53,18 @@ export default function MessageBubble({
   isHighlighted = false,
   searchQuery = '',
   onRequestReply,
+  contacts = [],
 }: Props) {
   const { isiPesan, senderName, waktuKirim, fileUrl, fileName, fileType } = message
+
+  const resolvedSenderName = useMemo(() => {
+    if (isOwnMessage) return 'Anda'
+    const savedContact = contacts?.find((c) => c.contactUid === message.senderId)
+    if (savedContact) {
+      return getContactDisplayName(savedContact)
+    }
+    return senderName ? `@${senderName}` : 'user'
+  }, [contacts, message.senderId, senderName, isOwnMessage])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number }>({
     open: false,
@@ -177,7 +190,7 @@ export default function MessageBubble({
           <div className="mb-1 shrink-0">
             <AvatarCircle
               photoURL={message.senderPhotoURL || null}
-              displayName={senderName}
+              displayName={resolvedSenderName}
               size="xs"
               variant="dashboard"
             />
@@ -186,8 +199,8 @@ export default function MessageBubble({
 
         <div className={`flex flex-col gap-1 max-w-[72%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
           {!isOwnMessage && !roomId.includes('_') && (
-            <span className={`text-[11px] font-semibold px-1 ${getSenderColor(senderName)}`}>
-              {senderName}
+            <span className={`text-[11px] font-semibold px-1 ${getSenderColor(resolvedSenderName)}`}>
+              {resolvedSenderName}
             </span>
           )}
 

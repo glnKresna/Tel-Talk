@@ -5,6 +5,7 @@ import MessageBubble from '../../messageBubble'
 import { ChatTimelineSeparator } from '../../UI/ChatTimelineSeparator'
 import type { Pesan } from '../../../store/useMsgStore'
 import type { Room } from '../../../types/dashboardTypes'
+import type { ContactWithProfile } from '../../../types/contactTypes'
 
 const getGroupDateLabel = (timestamp: any): string => {
   if (!timestamp) return ''
@@ -37,6 +38,7 @@ type Props = {
   onRequestDelete: (messageId: string) => void
   searchQuery?: string
   onRequestReply?: (message: Pesan) => void
+  contacts?: ContactWithProfile[]
 }
 
 export const MessageList = memo(function MessageList({
@@ -50,6 +52,7 @@ export const MessageList = memo(function MessageList({
   onRequestDelete,
   searchQuery = '',
   onRequestReply,
+  contacts = [],
 }: Props) {
   const matchingMessages = useMemo(() => {
     if (!searchQuery.trim()) return []
@@ -130,6 +133,7 @@ export const MessageList = memo(function MessageList({
               onRequestEdit={onRequestEdit}
               onRequestDelete={onRequestDelete}
               onRequestReply={onRequestReply}
+              contacts={contacts}
             />
           </div>
         )

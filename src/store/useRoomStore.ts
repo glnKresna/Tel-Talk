@@ -36,16 +36,12 @@ interface RoomStore {
   updateRoomPhoto: (roomId: string, photoURL: string | null) => Promise<void>
   updateRoomName: (roomId: string, name: string) => Promise<void>
   updateRoomDescription: (roomId: string, description: string) => Promise<void>
+  addMembersToRoom: (roomId: string, memberUids: string[]) => Promise<void>
+  updateRoomStatus: (roomId: string, status: 'public' | 'private') => Promise<void>
 }
 
-const defaultRoomsList: Room[] = [
-  { id: 'general', name: 'General', icon: '💬', photoURL: null },
-  { id: 'random', name: 'Random', icon: '🎲', photoURL: null },
-  { id: 'dev', name: 'Dev Talk', icon: '💻', photoURL: null },
-]
-
 export const useRoomStore = create<RoomStore>((set) => ({
-  rooms: defaultRoomsList,
+  rooms: [],
   isLoading: false,
   error: null,
   subscribeRooms: () => {
@@ -68,11 +64,7 @@ export const useRoomStore = create<RoomStore>((set) => ({
           admins: doc.data().admins || (doc.data().admin ? [doc.data().admin] : []),
         })) as Room[]
 
-        const uniqueDbRooms = dbRooms.filter(
-          (r) => !defaultRoomsList.some((dr) => dr.id === r.id)
-        )
-
-        set({ rooms: [...defaultRoomsList, ...uniqueDbRooms], isLoading: false })
+        set({ rooms: dbRooms, isLoading: false })
       },
       (err) => {
         console.error('Error loading rooms:', err)
@@ -148,5 +140,17 @@ export const useRoomStore = create<RoomStore>((set) => ({
   updateRoomDescription: async (roomId, description) => {
     const roomRef = doc(db, 'rooms', roomId)
     await updateDoc(roomRef, { description: description.trim() })
+  },
+
+  addMembersToRoom: async (roomId, memberUids) => {
+    const roomRef = doc(db, 'rooms', roomId)
+    await updateDoc(roomRef, {
+      members: arrayUnion(...memberUids)
+    })
+  },
+
+  updateRoomStatus: async (roomId, status) => {
+    const roomRef = doc(db, 'rooms', roomId)
+    await updateDoc(roomRef, { status })
   },
 }))

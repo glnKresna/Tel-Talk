@@ -16,6 +16,7 @@ type Props = {
   isSearchOpen?: boolean
   setIsSearchOpen?: (open: boolean) => void
   contact?: ContactWithProfile | null
+  contacts?: ContactWithProfile[]
 }
 
 export function ChatPanel({
@@ -26,6 +27,7 @@ export function ChatPanel({
   isSearchOpen = false,
   setIsSearchOpen,
   contact = null,
+  contacts = [],
 }: Props) {
   const { messages, isLoading: msgLoading, error: msgError, kirimPesan, kirimLampiran, hapusPesan } =
     useMsgStore()
@@ -179,6 +181,7 @@ export function ChatPanel({
         onRequestEdit={handleRequestEdit}
         onRequestDelete={handleRequestDelete}
         onRequestReply={handleRequestReply}
+        contacts={contacts}
       />
 
       {deleteConfirmMessageId && (
