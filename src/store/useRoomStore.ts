@@ -4,13 +4,13 @@ import {
   onSnapshot,
   addDoc,
   query,
-  orderBy,
   serverTimestamp,
   doc,
   updateDoc,
   arrayUnion,
   arrayRemove,
   setDoc,
+  where,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { Room } from '../types/dashboardTypes'
@@ -19,7 +19,7 @@ interface RoomStore {
   rooms: Room[]
   isLoading: boolean
   error: string | null
-  subscribeRooms: () => () => void
+  subscribeRooms: (userId: string) => () => void
   createRoom: (
     name: string,
     photoURL: string | null,
@@ -44,10 +44,10 @@ export const useRoomStore = create<RoomStore>((set) => ({
   rooms: [],
   isLoading: false,
   error: null,
-  subscribeRooms: () => {
+  subscribeRooms: (userId: string) => {
     set({ isLoading: true, error: null })
     const roomsRef = collection(db, 'rooms')
-    const q = query(roomsRef, orderBy('createdAt', 'asc'))
+    const q = query(roomsRef, where('members', 'array-contains', userId))
 
     const unsubscribe = onSnapshot(
       q,
@@ -62,7 +62,15 @@ export const useRoomStore = create<RoomStore>((set) => ({
           status: doc.data().status || 'public',
           admin: doc.data().admin || '',
           admins: doc.data().admins || (doc.data().admin ? [doc.data().admin] : []),
+          createdAt: doc.data().createdAt,
         })) as Room[]
+
+        // Sort client-side by createdAt ascending to avoid composite index requirements
+        dbRooms.sort((a: any, b: any) => {
+          const timeA = a.createdAt?.seconds || 0
+          const timeB = b.createdAt?.seconds || 0
+          return timeA - timeB
+        })
 
         set({ rooms: dbRooms, isLoading: false })
       },

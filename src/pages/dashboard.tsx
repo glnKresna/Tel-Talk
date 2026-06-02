@@ -107,7 +107,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!currUser) return
-    return subscribeRooms()
+    return subscribeRooms(currUser.uid)
   }, [currUser, subscribeRooms])
 
   // Real-time listener untuk data clearedRooms dari user aktif
